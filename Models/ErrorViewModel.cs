@@ -1,4 +1,4 @@
-namespace Success.Models;
+namespace success.Models;
 
 public class ErrorViewModel
 {
