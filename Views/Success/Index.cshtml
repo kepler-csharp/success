@@ -1,0 +1,140 @@
+﻿@{
+    ViewData["Title"] = "Verificacion de tickets";
+}
+
+<section class="topbar">
+    <div>
+        <p class="eyebrow">Success Scanner</p>
+        <h1>Control de ingreso</h1>
+        <p class="subtitle">Valida cada QR contra la API central y muestra el resultado al empleado.</p>
+    </div>
+    <div class="clock-box">
+        <span id="currentDate">--</span>
+        <strong id="currentTime">--:--:--</strong>
+    </div>
+</section>
+
+<section class="dashboard">
+    <div class="panel scanner-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Escanear entrada</h2>
+                <p>El lector QR funciona como teclado: escanea y envia el codigo automaticamente.</p>
+            </div>
+            <span id="apiStatus" class="status online">API lista</span>
+        </div>
+
+        <form id="scanForm" autocomplete="off">
+            @Html.AntiForgeryToken()
+            <label for="scanInput">Codigo del ticket</label>
+            <div class="scan-row">
+                <i class="fas fa-qrcode"></i>
+                <input id="scanInput" name="scanCode" type="text" placeholder="Ej: TICKET-001" autofocus>
+                <button type="submit">
+                    <i class="fas fa-check"></i>
+                    Validar
+                </button>
+            </div>
+        </form>
+
+        <div class="actions">
+            <button type="button" data-code="SUCCESS-DEMO-OK" class="soft-button demo-button">
+                <i class="fas fa-vial"></i>
+                Demo valido
+            </button>
+            <button type="button" data-code="SUCCESS-DEMO-FAIL" class="soft-button demo-button">
+                <i class="fas fa-ban"></i>
+                Demo invalido
+            </button>
+            <button type="button" id="clearButton" class="soft-button">
+                <i class="fas fa-eraser"></i>
+                Limpiar
+            </button>
+        </div>
+        
+    </div>
+
+    <div id="resultCard" class="panel result-panel empty">
+        <div id="verdictMark" class="verdict-mark neutral">
+            <i class="fas fa-ticket"></i>
+        </div>
+        <p class="eyebrow">Resultado</p>
+        <h2 id="resultTitle">Esperando escaneo</h2>
+        <p id="resultMessage">Cuando escanees un QR aqui veras si el ticket puede ingresar.</p>
+
+        <div id="ticketDetails" class="ticket-details hidden">
+            <div class="person-card">
+                <img id="clientPhoto" src="" alt="">
+                <div>
+                    <span>Persona escaneada</span>
+                    <strong id="clientName">--</strong>
+                    <small id="clientContact">--</small>
+                </div>
+            </div>
+            <div>
+                <span>Evento</span>
+                <strong id="eventName">--</strong>
+            </div>
+            <div>
+                <span>Lugar</span>
+                <strong id="venueName">--</strong>
+            </div>
+            <div>
+                <span>Funcion</span>
+                <strong id="showtimeStart">--</strong>
+            </div>
+            <div>
+                <span>Asiento</span>
+                <strong id="seatNumber">--</strong>
+            </div>
+            <div>
+                <span>Tipo / estado</span>
+                <strong id="ticketType">--</strong>
+            </div>
+            <div>
+                <span>Codigo</span>
+                <strong id="ticketCode">--</strong>
+            </div>
+            <div>
+                <span>Validado</span>
+                <strong id="scanTime">--</strong>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span>Escaneos hoy</span>
+        <strong id="todayCount">0</strong>
+    </div>
+    <div class="stat-card success">
+        <span>Aprobados</span>
+        <strong id="approvedCount">0</strong>
+    </div>
+    <div class="stat-card danger">
+        <span>Rechazados</span>
+        <strong id="rejectedCount">0</strong>
+    </div>
+</section>
+
+<section class="panel history-panel">
+    <div class="panel-header">
+        <div>
+            <h2>Ultimas validaciones</h2>
+            <p>Registro visual local de los ultimos QR validados en esta pantalla.</p>
+        </div>
+    </div>
+    <div id="historyList" class="history-list">
+        <p class="empty-text">Todavia no hay escaneos.</p>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        window.ticketUrls = {
+            validate: '@Url.Action("ValidateTicket", "Success")'
+        };
+    </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+}

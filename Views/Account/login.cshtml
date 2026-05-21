@@ -1,0 +1,41 @@
+@model Success.Models.Auth.LoginViewModel
+
+@{
+    ViewData["Title"] = "Login";
+}
+
+<section class="auth-shell">
+    <div class="auth-panel">
+        <p class="eyebrow">Success Tickets</p>
+        <h1>Iniciar sesion</h1>
+        <p>Usa tu cuenta de la API central para validar tickets.</p>
+
+        @if (TempData["AuthMessage"] is string message)
+        {
+            <div class="auth-message">@message</div>
+        }
+
+        <form asp-action="Login" method="post" class="auth-form">
+            @Html.AntiForgeryToken()
+            <input asp-for="ReturnUrl" type="hidden">
+            <div asp-validation-summary="ModelOnly" class="auth-error"></div>
+
+            <label asp-for="Email">Email</label>
+            <input asp-for="Email" autocomplete="email" autofocus>
+            <span asp-validation-for="Email"></span>
+
+            <label asp-for="Password">Contraseña</label>
+            <input asp-for="Password" autocomplete="current-password">
+            <span asp-validation-for="Password"></span>
+
+            <button type="submit">
+                <i class="fas fa-right-to-bracket"></i>
+                Entrar
+            </button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
