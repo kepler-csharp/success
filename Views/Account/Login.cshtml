@@ -7,8 +7,8 @@
 <section class="auth-shell">
     <div class="auth-panel">
         <p class="eyebrow">Success Tickets</p>
-        <h1>Iniciar sesion</h1>
-        <p>Usa tu cuenta de la API central para validar tickets.</p>
+        <h1>Log in</h1>
+        <p>Use your main API account to check tickets.</p>
 
         @if (TempData["AuthMessage"] is string message)
         {
@@ -24,13 +24,13 @@
             <input asp-for="Email" autocomplete="email" autofocus>
             <span asp-validation-for="Email"></span>
 
-            <label asp-for="Password">Contraseña</label>
+            <label asp-for="Password">Password</label>
             <input asp-for="Password" autocomplete="current-password">
             <span asp-validation-for="Password"></span>
 
             <button type="submit">
                 <i class="fas fa-right-to-bracket"></i>
-                Entrar
+                Log in
             </button>
         </form>
     </div>

@@ -1,12 +1,12 @@
 ﻿@{
-    ViewData["Title"] = "Verificacion de tickets";
+    ViewData["Title"] = "Ticket check";
 }
 
 <section class="topbar">
     <div>
         <p class="eyebrow">Success Scanner</p>
-        <h1>Control de ingreso</h1>
-        <p class="subtitle">Valida cada QR contra la API central y muestra el resultado al empleado.</p>
+        <h1>Entry check</h1>
+        <p class="subtitle">Check each QR with the main API and show the result.</p>
     </div>
     <div class="clock-box">
         <span id="currentDate">--</span>
@@ -18,21 +18,21 @@
     <div class="panel scanner-panel">
         <div class="panel-header">
             <div>
-                <h2>Escanear entrada</h2>
-                <p>El lector QR funciona como teclado: escanea y envia el codigo automaticamente.</p>
+                <h2>Scan ticket</h2>
+                <p>The QR reader works like a keyboard. Scan and send the code.</p>
             </div>
-            <span id="apiStatus" class="status online">API lista</span>
+            <span id="apiStatus" class="status online">API ready</span>
         </div>
 
         <form id="scanForm" autocomplete="off">
             @Html.AntiForgeryToken()
-            <label for="scanInput">Codigo del ticket</label>
+            <label for="scanInput">Ticket code</label>
             <div class="scan-row">
                 <i class="fas fa-qrcode"></i>
-                <input id="scanInput" name="scanCode" type="text" placeholder="Ej: TICKET-001" autofocus>
+                <input id="scanInput" name="scanCode" type="text" placeholder="Ex: TICKET-001" autofocus>
                 <button type="submit">
                     <i class="fas fa-check"></i>
-                    Validar
+                    Check
                 </button>
             </div>
         </form>
@@ -40,15 +40,15 @@
         <div class="actions">
             <button type="button" data-code="SUCCESS-DEMO-OK" class="soft-button demo-button">
                 <i class="fas fa-vial"></i>
-                Demo valido
+                Valid demo
             </button>
             <button type="button" data-code="SUCCESS-DEMO-FAIL" class="soft-button demo-button">
                 <i class="fas fa-ban"></i>
-                Demo invalido
+                Invalid demo
             </button>
             <button type="button" id="clearButton" class="soft-button">
                 <i class="fas fa-eraser"></i>
-                Limpiar
+                Clear
             </button>
         </div>
         
@@ -58,45 +58,45 @@
         <div id="verdictMark" class="verdict-mark neutral">
             <i class="fas fa-ticket"></i>
         </div>
-        <p class="eyebrow">Resultado</p>
-        <h2 id="resultTitle">Esperando escaneo</h2>
-        <p id="resultMessage">Cuando escanees un QR aqui veras si el ticket puede ingresar.</p>
+        <p class="eyebrow">Result</p>
+        <h2 id="resultTitle">Waiting for scan</h2>
+        <p id="resultMessage">Scan a QR. You will see if the ticket can enter.</p>
 
         <div id="ticketDetails" class="ticket-details hidden">
             <div class="person-card">
                 <img id="clientPhoto" src="" alt="">
                 <div>
-                    <span>Persona escaneada</span>
+                    <span>Scanned person</span>
                     <strong id="clientName">--</strong>
                     <small id="clientContact">--</small>
                 </div>
             </div>
             <div>
-                <span>Evento</span>
+                <span>Event</span>
                 <strong id="eventName">--</strong>
             </div>
             <div>
-                <span>Lugar</span>
+                <span>Place</span>
                 <strong id="venueName">--</strong>
             </div>
             <div>
-                <span>Funcion</span>
+                <span>Show time</span>
                 <strong id="showtimeStart">--</strong>
             </div>
             <div>
-                <span>Asiento</span>
+                <span>Seat</span>
                 <strong id="seatNumber">--</strong>
             </div>
             <div>
-                <span>Tipo / estado</span>
+                <span>Type / status</span>
                 <strong id="ticketType">--</strong>
             </div>
             <div>
-                <span>Codigo</span>
+                <span>Code</span>
                 <strong id="ticketCode">--</strong>
             </div>
             <div>
-                <span>Validado</span>
+                <span>Checked</span>
                 <strong id="scanTime">--</strong>
             </div>
         </div>
@@ -105,15 +105,15 @@
 
 <section class="stats-grid">
     <div class="stat-card">
-        <span>Escaneos hoy</span>
+        <span>Scans today</span>
         <strong id="todayCount">0</strong>
     </div>
     <div class="stat-card success">
-        <span>Aprobados</span>
+        <span>Approved</span>
         <strong id="approvedCount">0</strong>
     </div>
     <div class="stat-card danger">
-        <span>Rechazados</span>
+        <span>Rejected</span>
         <strong id="rejectedCount">0</strong>
     </div>
 </section>
@@ -121,12 +121,12 @@
 <section class="panel history-panel">
     <div class="panel-header">
         <div>
-            <h2>Ultimas validaciones</h2>
-            <p>Registro visual local de los ultimos QR validados en esta pantalla.</p>
+            <h2>Last checks</h2>
+            <p>Local list of the last QR checks on this screen.</p>
         </div>
     </div>
     <div id="historyList" class="history-list">
-        <p class="empty-text">Todavia no hay escaneos.</p>
+        <p class="empty-text">No scans yet.</p>
     </div>
 </section>
 

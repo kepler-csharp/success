@@ -4,11 +4,11 @@ namespace success.Models.Auth;
 
 public class LoginViewModel
 {
-    [Required(ErrorMessage = "El email es obligatorio.")]
-    [EmailAddress(ErrorMessage = "Escribe un email valido.")]
+    [Required(ErrorMessage = "Email is needed.")]
+    [EmailAddress(ErrorMessage = "Write a valid email.")]
     public string Email { get; set; } = "";
 
-    [Required(ErrorMessage = "La contrasena es obligatoria.")]
+    [Required(ErrorMessage = "Password is needed.")]
     [DataType(DataType.Password)]
     public string Password { get; set; } = "";
 

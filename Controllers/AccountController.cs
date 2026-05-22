@@ -51,14 +51,14 @@ public class AccountController : Controller
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", ReadMessage(body) ?? "No se pudo iniciar sesion con la API central.");
+                ModelState.AddModelError("", ReadMessage(body) ?? "Could not log in with the main API.");
                 return View(model);
             }
 
             var accessToken = ReadText(body, "accessToken", "token", "jwt");
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                ModelState.AddModelError("", "La API no devolvio un token de acceso.");
+                ModelState.AddModelError("", "The API did not return an access token.");
                 return View(model);
             }
 
@@ -91,7 +91,7 @@ public class AccountController : Controller
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
         {
             _logger.LogWarning(exception, "Central API login failed");
-            ModelState.AddModelError("", "No se pudo conectar con la API central.");
+            ModelState.AddModelError("", "Could not connect to the main API.");
             return View(model);
         }
     }

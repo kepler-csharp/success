@@ -25,8 +25,8 @@ scanForm.addEventListener("submit", async function (event) {
     if (code === "") {
         showResult({
             success: false,
-            title: "Codigo requerido",
-            message: "Escanea un QR o escribe el codigo del ticket.",
+            title: "Code needed",
+            message: "Scan a QR or type the ticket code.",
             type: "error"
         });
         return;
@@ -73,8 +73,8 @@ async function validateTicket(code) {
         markApiStatus(false);
         showResult({
             success: false,
-            title: "Error de conexion",
-            message: "No se pudo validar el ticket. Revisa la conexion con la API.",
+            title: "Connection error",
+            message: "The ticket could not be checked. Check the API connection.",
             type: "error"
         });
     }
@@ -84,8 +84,8 @@ function setLoading() {
     resultCard.className = "panel result-panel loading";
     verdictMark.className = "verdict-mark loading";
     verdictMark.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    document.getElementById("resultTitle").textContent = "Validando...";
-    document.getElementById("resultMessage").textContent = "Consultando la API central.";
+    document.getElementById("resultTitle").textContent = "Checking...";
+    document.getElementById("resultMessage").textContent = "Checking the main API.";
     ticketDetails.classList.add("hidden");
 }
 
@@ -94,7 +94,7 @@ function showResult(data) {
     resultCard.className = `panel result-panel ${resultType}`;
     verdictMark.className = `verdict-mark ${data.success ? "success" : "error"}`;
     verdictMark.innerHTML = data.success ? '<i class="fas fa-check"></i>' : '<i class="fas fa-xmark"></i>';
-    document.getElementById("resultTitle").textContent = data.title || "Resultado";
+    document.getElementById("resultTitle").textContent = data.title || "Result";
     document.getElementById("resultMessage").textContent = data.message || "";
 
     if (!data.ticket) {
@@ -107,12 +107,12 @@ function showResult(data) {
     const seat = [ticket.row, ticket.seatNumber].filter(Boolean).join("-");
     const typeStatus = [ticket.ticketType || ticket.entryMode, ticket.status].filter(Boolean).join(" / ");
 
-    document.getElementById("clientName").textContent = ticket.clientName || "Sin nombre";
-    document.getElementById("clientContact").textContent = contact || "Sin contacto";
+    document.getElementById("clientName").textContent = ticket.clientName || "No name";
+    document.getElementById("clientContact").textContent = contact || "No contact";
     document.getElementById("eventName").textContent = ticket.eventName || "--";
     document.getElementById("venueName").textContent = ticket.venueName || "--";
     document.getElementById("showtimeStart").textContent = formatDateTime(ticket.showtimeStart);
-    document.getElementById("seatNumber").textContent = seat || "Sin asiento";
+    document.getElementById("seatNumber").textContent = seat || "No seat";
     document.getElementById("ticketType").textContent = typeStatus || "--";
     document.getElementById("ticketCode").textContent = ticket.code || "--";
     document.getElementById("scanTime").textContent = formatDateTime(ticket.scanTime);
@@ -134,8 +134,8 @@ function addHistory(data, scannedCode) {
     item.className = `history-item ${data.success ? "success" : "danger"}`;
 
     const name = data.ticket ? data.ticket.clientName : scannedCode;
-    const message = data.title || "Validacion";
-    const time = new Date().toLocaleTimeString("es-CO", {
+    const message = data.title || "Check";
+    const time = new Date().toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit"
     });
@@ -176,7 +176,7 @@ function paintStats(stats) {
 
 function markApiStatus(isOnline) {
     apiStatus.className = `status ${isOnline ? "online" : "offline"}`;
-    apiStatus.textContent = isOnline ? "API conectada" : "API sin conexion";
+    apiStatus.textContent = isOnline ? "API connected" : "API offline";
 }
 
 function formatDateTime(value) {
@@ -189,7 +189,7 @@ function formatDateTime(value) {
         return "--";
     }
 
-    return date.toLocaleString("es-CO", {
+    return date.toLocaleString("en-US", {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -209,13 +209,13 @@ function escapeHtml(value) {
 function updateClock() {
     const now = new Date();
 
-    currentDate.textContent = now.toLocaleDateString("es-CO", {
+    currentDate.textContent = now.toLocaleDateString("en-US", {
         weekday: "long",
         day: "2-digit",
         month: "short"
     });
 
-    currentTime.textContent = now.toLocaleTimeString("es-CO", {
+    currentTime.textContent = now.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit"
