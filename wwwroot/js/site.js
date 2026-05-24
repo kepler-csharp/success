@@ -2,21 +2,11 @@ const scanForm = document.getElementById("scanForm");
 const scanInput = document.getElementById("scanInput");
 const resultCard = document.getElementById("resultCard");
 const ticketDetails = document.getElementById("ticketDetails");
-const historyList = document.getElementById("historyList");
 const verdictMark = document.getElementById("verdictMark");
 const apiStatus = document.getElementById("apiStatus");
 
 const currentDate = document.getElementById("currentDate");
 const currentTime = document.getElementById("currentTime");
-const todayCount = document.getElementById("todayCount");
-const approvedCount = document.getElementById("approvedCount");
-const rejectedCount = document.getElementById("rejectedCount");
-
-let localStats = {
-    today: 0,
-    approved: 0,
-    rejected: 0
-};
 
 scanForm.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -25,21 +15,14 @@ scanForm.addEventListener("submit", async function (event) {
     if (code === "") {
         showResult({
             success: false,
-            title: "Code needed",
-            message: "Scan a QR or type the ticket code.",
+            title: "Code required",
+            message: "Scan the QR or type the ticket code.",
             type: "error"
         });
         return;
     }
 
     await validateTicket(code);
-});
-
-document.querySelectorAll(".demo-button").forEach(function (button) {
-    button.addEventListener("click", async function () {
-        scanInput.value = button.dataset.code;
-        await validateTicket(button.dataset.code);
-    });
 });
 
 document.getElementById("clearButton").addEventListener("click", function () {
@@ -64,8 +47,6 @@ async function validateTicket(code) {
 
         const data = await response.json();
         showResult(data);
-        addHistory(data, code);
-        updateLocalStats(data.success);
         markApiStatus(true);
         scanInput.value = "";
         scanInput.focus();
@@ -73,8 +54,8 @@ async function validateTicket(code) {
         markApiStatus(false);
         showResult({
             success: false,
-            title: "Connection error",
-            message: "The ticket could not be checked. Check the API connection.",
+            title: "Could not check ticket",
+            message: "Check the connection and try again.",
             type: "error"
         });
     }
@@ -85,7 +66,7 @@ function setLoading() {
     verdictMark.className = "verdict-mark loading";
     verdictMark.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     document.getElementById("resultTitle").textContent = "Checking...";
-    document.getElementById("resultMessage").textContent = "Checking the main API.";
+    document.getElementById("resultMessage").textContent = "Please wait a moment.";
     ticketDetails.classList.add("hidden");
 }
 
@@ -94,8 +75,8 @@ function showResult(data) {
     resultCard.className = `panel result-panel ${resultType}`;
     verdictMark.className = `verdict-mark ${data.success ? "success" : "error"}`;
     verdictMark.innerHTML = data.success ? '<i class="fas fa-check"></i>' : '<i class="fas fa-xmark"></i>';
-    document.getElementById("resultTitle").textContent = data.title || "Result";
-    document.getElementById("resultMessage").textContent = data.message || "";
+    document.getElementById("resultTitle").textContent = toUserText(data.title || "Result");
+    document.getElementById("resultMessage").textContent = toUserText(data.message || "");
 
     if (!data.ticket) {
         ticketDetails.classList.add("hidden");
@@ -129,54 +110,16 @@ function showResult(data) {
     ticketDetails.classList.remove("hidden");
 }
 
-function addHistory(data, scannedCode) {
-    const item = document.createElement("div");
-    item.className = `history-item ${data.success ? "success" : "danger"}`;
-
-    const name = data.ticket ? data.ticket.clientName : scannedCode;
-    const message = data.title || "Check";
-    const time = new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-
-    item.innerHTML = `
-        <div>
-            <strong>${escapeHtml(name)}</strong>
-            <span>${escapeHtml(message)}</span>
-        </div>
-        <time>${time}</time>
-    `;
-
-    const emptyText = historyList.querySelector(".empty-text");
-    if (emptyText) {
-        emptyText.remove();
-    }
-
-    historyList.prepend(item);
-}
-
-function updateLocalStats(success) {
-    localStats.today++;
-
-    if (success) {
-        localStats.approved++;
-    } else {
-        localStats.rejected++;
-    }
-
-    paintStats(localStats);
-}
-
-function paintStats(stats) {
-    todayCount.textContent = stats.today;
-    approvedCount.textContent = stats.approved;
-    rejectedCount.textContent = stats.rejected;
-}
-
 function markApiStatus(isOnline) {
     apiStatus.className = `status ${isOnline ? "online" : "offline"}`;
-    apiStatus.textContent = isOnline ? "API connected" : "API offline";
+    apiStatus.textContent = isOnline ? "Ready to check" : "No connection";
+}
+
+function toUserText(value) {
+    return String(value || "")
+        .replace(/\bapi\b/gi, "system")
+        .replace(/\bjson\b/gi, "response")
+        .replace(/\btoken\b/gi, "session");
 }
 
 function formatDateTime(value) {
@@ -197,15 +140,6 @@ function formatDateTime(value) {
     });
 }
 
-function escapeHtml(value) {
-    return String(value || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
 function updateClock() {
     const now = new Date();
 
@@ -223,5 +157,4 @@ function updateClock() {
 }
 
 updateClock();
-paintStats(localStats);
 setInterval(updateClock, 1000);

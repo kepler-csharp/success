@@ -51,14 +51,14 @@ public class AccountController : Controller
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", ReadMessage(body) ?? "Could not log in with the main API.");
+                ModelState.AddModelError("", ToUserMessage(ReadMessage(body)) ?? "Email or password is incorrect.");
                 return View(model);
             }
 
             var accessToken = ReadText(body, "accessToken", "token", "jwt");
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                ModelState.AddModelError("", "The API did not return an access token.");
+                ModelState.AddModelError("", "Could not sign in. Try again.");
                 return View(model);
             }
 
@@ -91,7 +91,7 @@ public class AccountController : Controller
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
         {
             _logger.LogWarning(exception, "Central API login failed");
-            ModelState.AddModelError("", "Could not connect to the main API.");
+            ModelState.AddModelError("", "Could not connect to sign in.");
             return View(model);
         }
     }
@@ -129,6 +129,18 @@ public class AccountController : Controller
     private static string? ReadMessage(string json)
     {
         return ReadText(json, "message", "error", "detail", "title");
+    }
+
+    private static string? ToUserMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        return message
+            .Replace("API", "system", StringComparison.OrdinalIgnoreCase)
+            .Replace("token", "session", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ReadText(string json, params string[] names)

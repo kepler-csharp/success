@@ -1,7 +1,9 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using Success.Models.Responses;
 using success.Services.Interfaces;
@@ -10,14 +12,19 @@ namespace success.Services;
 
 public class ApiTicketService : ITicketService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly CentralApiOptions _options;
 
-        public ApiTicketService(
-            HttpClient httpClient,
-            IHttpContextAccessor httpContextAccessor,
-            IOptions<CentralApiOptions> options)
+    public ApiTicketService(
+        HttpClient httpClient,
+        IHttpContextAccessor httpContextAccessor,
+        IOptions<CentralApiOptions> options)
     {
         _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
@@ -33,42 +40,51 @@ public class ApiTicketService : ITicketService
     public async Task<TicketValidationResponse> ValidateTicketAsync(string scanCode)
     {
         var code = (scanCode ?? "").Trim();
-        if (code.Length < 4)
+        if (string.IsNullOrWhiteSpace(code))
         {
-            return Response(false, "Codigo invalido", "Escanea de nuevo o escribe un codigo mas largo.", "error");
+            return Response(false, "Code required", "Scan the QR or type the ticket code.", "error");
         }
 
         try
         {
             ApplyAuthorizationHeader();
 
-            var body = new Dictionary<string, string>
-            {
-                [_options.ValidateCodeProperty] = code
-            };
+            var apiResponse = await _httpClient.PostAsJsonAsync(
+                _options.ValidateTicketPath,
+                new ValidateTicketApiRequest(code, GetDeviceInfo()),
+                JsonOptions);
 
-            var apiResponse = await _httpClient.PostAsJsonAsync(_options.ValidateTicketPath, body);
-
-            if (apiResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            if (apiResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
-                return Response(false, "No autorizado", "La API rechazo la solicitud. Revisa el token del escaner.", "error");
+                return Response(false, "Could not check ticket", "This entry station is not authorized.", "error");
+            }
+
+            var json = await apiResponse.Content.ReadAsStringAsync();
+            var validation = ReadApiResponse(json);
+
+            if (validation?.Data != null)
+            {
+                return MapValidationResult(validation.Data, validation.Message, code);
             }
 
             if (!apiResponse.IsSuccessStatusCode)
             {
-                return Response(false, "Error de API", "La API central no pudo validar el ticket en este momento.", "error");
+                return Response(false, "Could not check ticket", "The system could not check this ticket right now.", "error");
             }
 
-            var json = await apiResponse.Content.ReadAsStringAsync();
-            return ParseValidationResponse(json, code);
+            return Response(false, "Could not check ticket", "The system did not return ticket information.", "error");
+        }
+        catch (JsonException)
+        {
+            return Response(false, "Could not check ticket", "The information received could not be read.", "error");
         }
         catch (HttpRequestException)
         {
-            return Response(false, "API no disponible", "No se pudo conectar con la API central de tickets.", "error");
+            return Response(false, "No connection", "Could not reach the ticket system.", "error");
         }
         catch (TaskCanceledException)
         {
-            return Response(false, "Tiempo agotado", "La API central tardo demasiado en responder.", "error");
+            return Response(false, "Timed out", "The system took too long to respond.", "error");
         }
     }
 
@@ -83,208 +99,74 @@ public class ApiTicketService : ITicketService
         }
     }
 
-    private static TicketValidationResponse ParseValidationResponse(string json, string scannedCode)
+    private string GetDeviceInfo()
+    {
+        var context = _httpContextAccessor.HttpContext;
+        var name = context?.User.FindFirstValue(ClaimTypes.Name) ?? context?.User.Identity?.Name;
+        return string.IsNullOrWhiteSpace(name) ? "Web scanner" : $"Web scanner - {name}";
+    }
+
+    private static ScannerApiResponse? ReadApiResponse(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return Response(false, "Respuesta vacia", "La API central no devolvio datos de validacion.", "error");
-        }
-
-        try
-        {
-            var root = JsonNode.Parse(json);
-            if (root == null)
-            {
-                return Response(false, "Respuesta invalida", "La API devolvio JSON vacio o incorrecto.", "error");
-            }
-
-            var ticketNode = FirstObject(root, "ticket", "data", "result", "validation") ?? root;
-            var success = GetBool(root, "success", "isValid", "wasSuccessful", "valid")
-                          ?? GetBool(ticketNode, "success", "isValid", "wasSuccessful", "valid")
-                          ?? false;
-
-            var failureReason = FirstText(root, "failureReason", "reason", "error", "message")
-                                ?? FirstText(ticketNode, "failureReason", "reason", "error", "message");
-
-            var title = FirstText(root, "title")
-                        ?? (success ? "Acceso permitido" : "Acceso rechazado");
-
-            var message = FirstText(root, "message", "detail", "description")
-                          ?? failureReason
-                          ?? (success ? "El ticket es valido. Puede ingresar." : "La API no autorizo el ingreso.");
-
-            var type = FirstText(root, "type", "status")
-                       ?? FirstText(ticketNode, "type", "status")
-                       ?? (success ? "success" : "error");
-
-            return new TicketValidationResponse
-            {
-                Success = success,
-                Title = title,
-                Message = message,
-                Type = NormalizeType(type, success),
-                Ticket = BuildTicketInfo(ticketNode, scannedCode)
-            };
-        }
-        catch (JsonException)
-        {
-            return Response(false, "Respuesta invalida", "La API devolvio un formato que Success no pudo leer.", "error");
-        }
-    }
-
-    private static TicketValidationResponse.TicketInfo? BuildTicketInfo(JsonNode? node, string scannedCode)
-    {
-        if (node == null)
-        {
             return null;
         }
 
-        var user = FirstObject(node, "user", "customer", "client", "owner", "buyer") ?? node;
-        var ticket = FirstObject(node, "ticket") ?? node;
-        var orderItem = FirstObject(node, "orderItem") ?? node;
-        var order = FirstObject(node, "order") ?? node;
-        var eventNode = FirstObject(node, "event") ?? node;
-        var showtime = FirstObject(node, "showtime") ?? node;
-        var seat = FirstObject(node, "seat") ?? node;
-        var venue = FirstObject(node, "venue") ?? eventNode;
+        return JsonSerializer.Deserialize<ScannerApiResponse>(json, JsonOptions);
+    }
 
-        var code = FirstText(ticket, "qrCode", "code", "number", "externalId", "id")
-                   ?? FirstText(node, "qrCode", "code", "number", "externalId")
-                   ?? scannedCode;
+    private static TicketValidationResponse MapValidationResult(
+        ValidateTicketApiResult result,
+        string? wrapperMessage,
+        string scannedCode)
+    {
+        var message = FirstText(result.Message, wrapperMessage)
+                      ?? (result.IsValid ? "Valid ticket. Access granted." : "Entry was not authorized.");
 
-        var clientName = FirstText(user, "fullName", "name", "userName", "email")
-                         ?? FirstText(order, "fullName", "customerName", "buyerName")
-                         ?? "";
-
-        return new TicketValidationResponse.TicketInfo
+        return new TicketValidationResponse
         {
-            Code = code,
-            ClientName = clientName,
-            Email = FirstText(user, "email", "normalizedEmail") ?? "",
-            PhoneNumber = FirstText(user, "phoneNumber", "phone") ?? "",
-            EventName = FirstText(eventNode, "name", "eventName", "title") ?? "",
-            TicketType = FirstText(ticket, "type", "ticketType", "name") ?? FirstText(orderItem, "type", "ticketType") ?? "",
-            SeatNumber = FirstText(seat, "number", "seatNumber", "name") ?? FirstText(node, "seatNumber") ?? "",
-            Row = FirstText(seat, "row", "seatRow") ?? "",
-            VenueName = FirstText(venue, "venueName", "name") ?? "",
-            Status = FirstText(ticket, "status") ?? FirstText(node, "status") ?? "",
-            EntryMode = FirstText(ticket, "entryMode", "provider", "type") ?? "",
-            ScanTime = GetDate(node, "validatedAt", "usedAt", "scanTime", "createdAt") ?? DateTime.UtcNow,
-            ShowtimeStart = GetDate(showtime, "startTime", "startsAt"),
-            PhotoUrl = FirstText(user, "photoUrl", "avatarUrl", "imageUrl") ?? ""
+            Success = result.IsValid,
+            Title = result.IsValid ? "Entry allowed" : "Entry rejected",
+            Message = message,
+            Type = result.IsValid ? "success" : "error",
+            Ticket = result.Ticket == null ? null : MapTicket(result.Ticket, scannedCode)
         };
     }
 
-    private static JsonNode? FirstObject(JsonNode? node, params string[] names)
+    private static TicketValidationResponse.TicketInfo MapTicket(TicketDetailApiDto ticket, string scannedCode)
     {
-        foreach (var name in names)
-        {
-            var value = GetValue(node, name);
-            if (value is JsonObject)
-            {
-                return value;
-            }
-        }
+        var ticketId = JsonValueToString(ticket.TicketId);
 
-        return null;
+        return new TicketValidationResponse.TicketInfo
+        {
+            Code = string.IsNullOrWhiteSpace(ticketId) ? scannedCode : ticketId,
+            ClientName = ticket.HolderEmail ?? "",
+            Email = ticket.HolderEmail ?? "",
+            EventName = ticket.EventName ?? "",
+            VenueName = ticket.VenueName ?? "",
+            SeatNumber = ticket.SeatLabel ?? "",
+            Status = ticket.WasAlreadyUsed ? "Already used" : "",
+            ScanTime = ticket.UsedAt ?? DateTime.UtcNow,
+            ShowtimeStart = ticket.ShowtimeStart
+        };
     }
 
-    private static string? FirstText(JsonNode? node, params string[] names)
+    private static string? JsonValueToString(JsonElement value)
     {
-        foreach (var name in names)
+        return value.ValueKind switch
         {
-            var value = GetValue(node, name);
-            var text = value?.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : value?.ToJsonString();
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                return text.Trim('"');
-            }
-        }
-
-        return null;
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => null
+        };
     }
 
-    private static bool? GetBool(JsonNode? node, params string[] names)
+    private static string? FirstText(params string?[] values)
     {
-        foreach (var name in names)
-        {
-            var value = GetValue(node, name);
-            if (value == null)
-            {
-                continue;
-            }
-
-            if (value.GetValueKind() is JsonValueKind.True or JsonValueKind.False)
-            {
-                return value.GetValue<bool>();
-            }
-
-            if (bool.TryParse(FirstText(node, name), out var parsed))
-            {
-                return parsed;
-            }
-        }
-
-        return null;
-    }
-
-    private static int? GetInt(JsonNode? node, params string[] names)
-    {
-        foreach (var name in names)
-        {
-            var text = FirstText(node, name);
-            if (int.TryParse(text, out var value))
-            {
-                return value;
-            }
-        }
-
-        return null;
-    }
-
-    private static DateTime? GetDate(JsonNode? node, params string[] names)
-    {
-        foreach (var name in names)
-        {
-            var text = FirstText(node, name);
-            if (DateTime.TryParse(text, out var value))
-            {
-                return value;
-            }
-        }
-
-        return null;
-    }
-
-    private static JsonNode? GetValue(JsonNode? node, string name)
-    {
-        if (node is not JsonObject obj)
-        {
-            return null;
-        }
-
-        foreach (var property in obj)
-        {
-            if (string.Equals(property.Key, name, StringComparison.OrdinalIgnoreCase))
-            {
-                return property.Value;
-            }
-        }
-
-        return null;
-    }
-
-    private static string NormalizeType(string type, bool success)
-    {
-        if (success)
-        {
-            return "success";
-        }
-
-        var normalized = type.Trim().ToLowerInvariant();
-        return normalized is "used" or "duplicate" or "expired" or "cancelled" or "not-found"
-            ? normalized
-            : "error";
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     }
 
     private static TicketValidationResponse Response(bool success, string title, string message, string type)
@@ -296,5 +178,34 @@ public class ApiTicketService : ITicketService
             Message = message,
             Type = type
         };
+    }
+
+    private sealed record ValidateTicketApiRequest(
+        [property: JsonPropertyName("qrCode")] string QRCode,
+        [property: JsonPropertyName("deviceInfo")] string DeviceInfo);
+
+    private sealed class ScannerApiResponse
+    {
+        public string? Message { get; set; }
+        public ValidateTicketApiResult? Data { get; set; }
+    }
+
+    private sealed class ValidateTicketApiResult
+    {
+        public bool IsValid { get; set; }
+        public string? Message { get; set; }
+        public TicketDetailApiDto? Ticket { get; set; }
+    }
+
+    private sealed class TicketDetailApiDto
+    {
+        public JsonElement TicketId { get; set; }
+        public string? HolderEmail { get; set; }
+        public string? EventName { get; set; }
+        public string? VenueName { get; set; }
+        public DateTime? ShowtimeStart { get; set; }
+        public string? SeatLabel { get; set; }
+        public bool WasAlreadyUsed { get; set; }
+        public DateTime? UsedAt { get; set; }
     }
 }

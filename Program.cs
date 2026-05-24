@@ -7,17 +7,18 @@ builder.Services.Configure<CentralApiOptions>(builder.Configuration.GetSection("
 builder.Services.AddHttpContextAccessor();
 
 var centralApiOptions = builder.Configuration.GetSection("CentralApi").Get<CentralApiOptions>() ?? new CentralApiOptions();
+var centralApiTimeout = TimeSpan.FromSeconds(centralApiOptions.TimeoutSeconds);
 
 builder.Services.AddHttpClient<ITicketService, ApiTicketService>(client =>
 {
     client.BaseAddress = new Uri(centralApiOptions.BaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
+    client.Timeout = centralApiTimeout;
 });
 
 builder.Services.AddHttpClient("CentralApi", client =>
 {
     client.BaseAddress = new Uri(centralApiOptions.BaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
+    client.Timeout = centralApiTimeout;
 });
 
 builder.Services.AddAuthentication("Cookies")

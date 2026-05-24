@@ -1,12 +1,11 @@
 ﻿@{
-    ViewData["Title"] = "Ticket check";
+    ViewData["Title"] = "Entry control";
 }
 
 <section class="topbar">
     <div>
-        <p class="eyebrow">Success Scanner</p>
-        <h1>Entry check</h1>
-        <p class="subtitle">Check each QR with the main API and show the result.</p>
+        <p class="eyebrow">Success Tickets</p>
+        <h1>Entry control</h1>
     </div>
     <div class="clock-box">
         <span id="currentDate">--</span>
@@ -15,13 +14,13 @@
 </section>
 
 <section class="dashboard">
-    <div class="panel scanner-panel">
+    <div class="panel">
         <div class="panel-header">
             <div>
                 <h2>Scan ticket</h2>
-                <p>The QR reader works like a keyboard. Scan and send the code.</p>
+                <p>Scan the ticket QR. You can also type the code if needed.</p>
             </div>
-            <span id="apiStatus" class="status online">API ready</span>
+            <span id="apiStatus" class="status online">Ready to check</span>
         </div>
 
         <form id="scanForm" autocomplete="off">
@@ -29,7 +28,7 @@
             <label for="scanInput">Ticket code</label>
             <div class="scan-row">
                 <i class="fas fa-qrcode"></i>
-                <input id="scanInput" name="scanCode" type="text" placeholder="Ex: TICKET-001" autofocus>
+                <input id="scanInput" name="scanCode" type="text" placeholder="Scan or type the code" autofocus inputmode="text" enterkeyhint="done" autocapitalize="off" spellcheck="false">
                 <button type="submit">
                     <i class="fas fa-check"></i>
                     Check
@@ -38,35 +37,26 @@
         </form>
 
         <div class="actions">
-            <button type="button" data-code="SUCCESS-DEMO-OK" class="soft-button demo-button">
-                <i class="fas fa-vial"></i>
-                Valid demo
-            </button>
-            <button type="button" data-code="SUCCESS-DEMO-FAIL" class="soft-button demo-button">
-                <i class="fas fa-ban"></i>
-                Invalid demo
-            </button>
             <button type="button" id="clearButton" class="soft-button">
                 <i class="fas fa-eraser"></i>
                 Clear
             </button>
         </div>
-        
     </div>
 
-    <div id="resultCard" class="panel result-panel empty">
-        <div id="verdictMark" class="verdict-mark neutral">
+    <div id="resultCard" class="panel result-panel">
+        <div id="verdictMark" class="verdict-mark">
             <i class="fas fa-ticket"></i>
         </div>
         <p class="eyebrow">Result</p>
         <h2 id="resultTitle">Waiting for scan</h2>
-        <p id="resultMessage">Scan a QR. You will see if the ticket can enter.</p>
+        <p id="resultMessage">Scan a QR to see if the person can enter.</p>
 
         <div id="ticketDetails" class="ticket-details hidden">
             <div class="person-card">
                 <img id="clientPhoto" src="" alt="">
                 <div>
-                    <span>Scanned person</span>
+                    <span>Person</span>
                     <strong id="clientName">--</strong>
                     <small id="clientContact">--</small>
                 </div>
@@ -80,7 +70,7 @@
                 <strong id="venueName">--</strong>
             </div>
             <div>
-                <span>Show time</span>
+                <span>Time</span>
                 <strong id="showtimeStart">--</strong>
             </div>
             <div>
@@ -100,33 +90,6 @@
                 <strong id="scanTime">--</strong>
             </div>
         </div>
-    </div>
-</section>
-
-<section class="stats-grid">
-    <div class="stat-card">
-        <span>Scans today</span>
-        <strong id="todayCount">0</strong>
-    </div>
-    <div class="stat-card success">
-        <span>Approved</span>
-        <strong id="approvedCount">0</strong>
-    </div>
-    <div class="stat-card danger">
-        <span>Rejected</span>
-        <strong id="rejectedCount">0</strong>
-    </div>
-</section>
-
-<section class="panel history-panel">
-    <div class="panel-header">
-        <div>
-            <h2>Last checks</h2>
-            <p>Local list of the last QR checks on this screen.</p>
-        </div>
-    </div>
-    <div id="historyList" class="history-list">
-        <p class="empty-text">No scans yet.</p>
     </div>
 </section>
 

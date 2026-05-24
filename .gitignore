@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+App_Data/scan-activity.json
 
 # User-specific files
 *.rsuser

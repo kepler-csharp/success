@@ -32,8 +32,8 @@ public class SuccessController : Controller
             return BadRequest(new TicketValidationResponse
             {
                 Success = false,
-                Title = "Code needed",
-                Message = "Scan a QR or type the ticket code.",
+                Title = "Code required",
+                Message = "Scan the QR or type the ticket code.",
                 Type = "error"
             });
         }
