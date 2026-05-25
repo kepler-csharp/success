@@ -49,6 +49,7 @@ public class ApiTicketService : ITicketService
         {
             ApplyAuthorizationHeader();
 
+            // La API central recibe el codigo y una descripcion del escaner.
             var apiResponse = await _httpClient.PostAsJsonAsync(
                 _options.ValidateTicketPath,
                 new ValidateTicketApiRequest(code, GetDeviceInfo()),
@@ -90,6 +91,7 @@ public class ApiTicketService : ITicketService
 
     private void ApplyAuthorizationHeader()
     {
+        // Prioriza el token del operador autenticado; si no existe usa el token fijo.
         var token = _httpContextAccessor.HttpContext?.User.FindFirst("access_token")?.Value
                     ?? _options.BearerToken;
 
@@ -121,6 +123,7 @@ public class ApiTicketService : ITicketService
         string? wrapperMessage,
         string scannedCode)
     {
+        // Convierte la respuesta externa al formato que consume la pantalla.
         var message = FirstText(result.Message, wrapperMessage)
                       ?? (result.IsValid ? "Valid ticket. Access granted." : "Entry was not authorized.");
 

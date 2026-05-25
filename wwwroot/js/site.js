@@ -34,8 +34,10 @@ async function validateTicket(code) {
     setLoading();
 
     try {
+        // Token antiforgery generado por Razor en el formulario.
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
+        // El backend valida el ticket y devuelve un resultado listo para pintar.
         const response = await fetch(window.ticketUrls.validate, {
             method: "POST",
             headers: {
@@ -71,6 +73,7 @@ function setLoading() {
 }
 
 function showResult(data) {
+    // Cambia el estado visual segun la respuesta del servidor.
     const resultType = data.success ? "success" : (data.type || "error");
     resultCard.className = `panel result-panel ${resultType}`;
     verdictMark.className = `verdict-mark ${data.success ? "success" : "error"}`;

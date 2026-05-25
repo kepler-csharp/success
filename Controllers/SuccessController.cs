@@ -38,6 +38,7 @@ public class SuccessController : Controller
             });
         }
 
+        // Delega la validacion real al servicio que llama la API central.
         var response = await _ticketService.ValidateTicketAsync(request.ScanCode);
         return Ok(response);
     }

@@ -55,6 +55,7 @@ public class AccountController : Controller
                 return View(model);
             }
 
+            // La API puede devolver el token con distintos nombres.
             var accessToken = ReadText(body, "accessToken", "token", "jwt");
             if (string.IsNullOrWhiteSpace(accessToken))
             {
@@ -84,6 +85,7 @@ public class AccountController : Controller
             }
 
             var identity = new ClaimsIdentity(claims, "Cookies");
+            // Guarda la sesion local y conserva el access token como claim.
             await HttpContext.SignInAsync("Cookies", new ClaimsPrincipal(identity));
 
             return LocalRedirect(IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl! : Url.Action("Index", "Success")!);
@@ -107,6 +109,7 @@ public class AccountController : Controller
         {
             if (!string.IsNullOrWhiteSpace(token))
             {
+                // Intenta cerrar tambien la sesion en la API central.
                 var client = _httpClientFactory.CreateClient("CentralApi");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 await client.PostAsync("/api/logout", null);
@@ -174,6 +177,7 @@ public class AccountController : Controller
         return null;
     }
 
+    // Busca una propiedad sin depender de la forma exacta del JSON.
     private static JsonNode? FindValue(JsonNode? node, string name)
     {
         if (node is JsonObject obj)
