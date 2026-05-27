@@ -123,6 +123,10 @@ body {
     padding: 32px;
 }
 
+.page-full {
+    margin-left: 0;
+}
+
 @media (max-width: 800px) {
     .sidebar {
         position: static;
