@@ -275,6 +275,65 @@ label {
     margin-top: 16px;
 }
 
+.camera-panel {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+}
+
+.camera-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.camera-header h3 {
+    margin: 0 0 4px;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.camera-header p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.camera-status {
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #fff0e7;
+    color: var(--primary-dark);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.camera-status.offline {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.qr-reader {
+    overflow: hidden;
+    min-height: 0;
+    border: 1px dashed rgba(60, 64, 68, 0.22);
+    border-radius: 8px;
+    background: #fffaf5;
+}
+
+.qr-reader:empty {
+    display: none;
+}
+
+.qr-reader video {
+    width: 100% !important;
+    max-height: 360px;
+    object-fit: cover;
+}
+
 .soft-button {
     padding: 0 14px;
     border: 1px solid var(--border);
@@ -414,8 +473,14 @@ label {
 
 @media (max-width: 640px) {
     .topbar,
-    .panel-header {
+    .panel-header,
+    .camera-header {
         display: block;
+    }
+
+    .camera-status {
+        display: inline-block;
+        margin-top: 10px;
     }
 
     .clock-box {

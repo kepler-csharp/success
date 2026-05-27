@@ -1,4 +1,6 @@
-const CACHE_NAME = "success-tickets-pwa-v1";
+const CACHE_NAME = "success-tickets-pwa-v2";
+
+// Archivos necesarios para instalar la PWA y usar el scanner QR.
 const STATIC_ASSETS = [
     "/manifest.webmanifest",
     "/offline.html",
@@ -7,7 +9,8 @@ const STATIC_ASSETS = [
     "/icons/maskable-icon.svg",
     "/css/layout.css",
     "/css/site.css",
-    "/js/site.js"
+    "/js/site.js",
+    "/lib/html5-qrcode/html5-qrcode.min.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -60,7 +63,8 @@ function isStaticAsset(pathname) {
         || pathname === "/favicon.ico"
         || pathname.startsWith("/icons/")
         || pathname.startsWith("/css/")
-        || pathname.startsWith("/js/");
+        || pathname.startsWith("/js/")
+        || pathname.startsWith("/lib/html5-qrcode/");
 }
 
 async function cacheFirst(request) {

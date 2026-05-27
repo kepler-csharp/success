@@ -1088,6 +1088,8 @@ Clases visuales principales:
 
 La aplicacion esta preparada para instalarse como Progressive Web App.
 
+Guia detallada de implementacion y mantenimiento: [`README_PWA.md`](README_PWA.md).
+
 Archivos principales:
 
 - `wwwroot/manifest.webmanifest`: configuracion instalable de la app.

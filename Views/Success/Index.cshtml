@@ -42,6 +42,33 @@
                 Clear
             </button>
         </div>
+
+        <div class="camera-panel">
+            <div class="camera-header">
+                <div>
+                    <h3>Phone camera</h3>
+                    <p>Read the QR with the device camera and verify it automatically.</p>
+                </div>
+                <span id="cameraStatus" class="camera-status">Camera off</span>
+            </div>
+
+            <div id="qrReader" class="qr-reader"></div>
+
+            <div class="actions">
+                <button type="button" id="startCameraButton" class="soft-button">
+                    <i class="fas fa-camera"></i>
+                    Use camera
+                </button>
+                <button type="button" id="scanNextButton" class="soft-button hidden">
+                    <i class="fas fa-rotate-right"></i>
+                    Scan next
+                </button>
+                <button type="button" id="stopCameraButton" class="soft-button hidden">
+                    <i class="fas fa-video-slash"></i>
+                    Stop camera
+                </button>
+            </div>
+        </div>
     </div>
 
     <div id="resultCard" class="panel result-panel">
@@ -99,5 +126,7 @@
             validate: '@Url.Action("ValidateTicket", "Success")'
         };
     </script>
+    @* Libreria local para leer QR desde la camara del navegador. *@
+    <script src="~/lib/html5-qrcode/html5-qrcode.min.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 }
