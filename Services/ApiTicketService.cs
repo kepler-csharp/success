@@ -3,8 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
+using success.Models.CentralApi;
 using Success.Models.Responses;
 using success.Services.Interfaces;
 
@@ -19,21 +18,23 @@ public class ApiTicketService : ITicketService
 
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly CentralApiOptions _options;
+    private readonly string _validateTicketPath;
+    private readonly string? _bearerToken;
 
     public ApiTicketService(
         HttpClient httpClient,
         IHttpContextAccessor httpContextAccessor,
-        IOptions<CentralApiOptions> options)
+        IConfiguration configuration)
     {
         _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
-        _options = options.Value;
+        _validateTicketPath = configuration["CentralApi:ValidateTicketPath"] ?? "/api/scanner/validate";
+        _bearerToken = configuration["CentralApi:BearerToken"];
 
-        if (!string.IsNullOrWhiteSpace(_options.BearerToken))
+        if (!string.IsNullOrWhiteSpace(_bearerToken))
         {
             _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _options.BearerToken);
+                new AuthenticationHeaderValue("Bearer", _bearerToken);
         }
     }
 
@@ -51,7 +52,7 @@ public class ApiTicketService : ITicketService
 
             // La API central recibe el codigo y una descripcion del escaner.
             var apiResponse = await _httpClient.PostAsJsonAsync(
-                _options.ValidateTicketPath,
+                _validateTicketPath,
                 new ValidateTicketApiRequest(code, GetDeviceInfo()),
                 JsonOptions);
 
@@ -93,7 +94,7 @@ public class ApiTicketService : ITicketService
     {
         // Prioriza el token del operador autenticado; si no existe usa el token fijo.
         var token = _httpContextAccessor.HttpContext?.User.FindFirst("access_token")?.Value
-                    ?? _options.BearerToken;
+                    ?? _bearerToken;
 
         if (!string.IsNullOrWhiteSpace(token))
         {
@@ -181,34 +182,5 @@ public class ApiTicketService : ITicketService
             Message = message,
             Type = type
         };
-    }
-
-    private sealed record ValidateTicketApiRequest(
-        [property: JsonPropertyName("qrCode")] string QRCode,
-        [property: JsonPropertyName("deviceInfo")] string DeviceInfo);
-
-    private sealed class ScannerApiResponse
-    {
-        public string? Message { get; set; }
-        public ValidateTicketApiResult? Data { get; set; }
-    }
-
-    private sealed class ValidateTicketApiResult
-    {
-        public bool IsValid { get; set; }
-        public string? Message { get; set; }
-        public TicketDetailApiDto? Ticket { get; set; }
-    }
-
-    private sealed class TicketDetailApiDto
-    {
-        public JsonElement TicketId { get; set; }
-        public string? HolderEmail { get; set; }
-        public string? EventName { get; set; }
-        public string? VenueName { get; set; }
-        public DateTime? ShowtimeStart { get; set; }
-        public string? SeatLabel { get; set; }
-        public bool WasAlreadyUsed { get; set; }
-        public DateTime? UsedAt { get; set; }
     }
 }

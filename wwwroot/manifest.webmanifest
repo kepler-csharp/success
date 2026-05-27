@@ -1,0 +1,34 @@
+{
+  "name": "Success Tickets - Entry Control",
+  "short_name": "Success Tickets",
+  "description": "Control de ingreso para eventos mediante escaneo y validacion de tickets.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#111827",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Validar ticket",
+      "short_name": "Validar",
+      "url": "/Success",
+      "description": "Abrir la pantalla de escaneo."
+    }
+  ]
+}

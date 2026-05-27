@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111827">
+    <meta name="application-name" content="Success Tickets">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Success Tickets">
     <title>@ViewData["Title"] - Success Tickets</title>
+    <link rel="manifest" href="~/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="~/icons/icon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="~/css/layout.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
@@ -51,5 +57,14 @@
 </main>
 
 @await RenderSectionAsync("Scripts", required: false)
+<script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register("@Url.Content("~/service-worker.js")").catch(function () {
+                // La aplicacion sigue funcionando aunque el navegador no instale el worker.
+            });
+        });
+    }
+</script>
 </body>
 </html>

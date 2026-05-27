@@ -16,6 +16,7 @@ Aplicacion web ASP.NET Core MVC para controlar el ingreso a eventos mediante esc
 - [Contrato con la API central](#contrato-con-la-api-central)
 - [Autenticacion y seguridad](#autenticacion-y-seguridad)
 - [Frontend y experiencia de usuario](#frontend-y-experiencia-de-usuario)
+- [PWA](#pwa)
 - [Docker](#docker)
 - [CI/CD con GitHub Actions](#cicd-con-github-actions)
 - [NuGet y dependencias](#nuget-y-dependencias)
@@ -45,6 +46,7 @@ La aplicacion no contiene la logica final del negocio de tickets. Esa responsabi
 - **HttpClientFactory**: clientes HTTP configurados para comunicarse con la API central.
 - **Bootstrap, jQuery y jQuery Validation**: librerias estaticas presentes en `wwwroot/lib`.
 - **Font Awesome CDN**: iconos usados en la interfaz.
+- **PWA**: manifest, service worker, iconos instalables y pagina offline.
 - **Docker multi-stage build**: imagen de build con SDK y runtime liviano con ASP.NET.
 - **GitHub Actions**: workflow para construir, publicar imagen en GHCR y desplegar en VPS.
 
@@ -86,7 +88,7 @@ Componentes principales:
 
 `Program.cs` crea el builder de ASP.NET Core, lee configuracion desde `appsettings.json` y registra los servicios necesarios:
 
-- `CentralApiOptions` desde la seccion `CentralApi`.
+- Configuracion `CentralApi` desde `appsettings.json`.
 - `IHttpContextAccessor` para acceder al usuario actual desde servicios.
 - `ITicketService` implementado por `ApiTicketService`.
 - Cliente HTTP nombrado `CentralApi`.
@@ -243,8 +245,7 @@ success/
 ├── Services/
 │   ├── Interfaces/
 │   │   └── ITicketService.cs
-│   ├── ApiTicketService.cs
-│   └── CentralApiOptions.cs
+│   └── ApiTicketService.cs
 ├── Views/
 │   ├── Account/
 │   │   └── Login.cshtml
@@ -262,6 +263,9 @@ success/
 │   ├── css/
 │   │   ├── layout.css
 │   │   └── site.css
+│   ├── icons/
+│   │   ├── icon.svg
+│   │   └── maskable-icon.svg
 │   ├── js/
 │   │   └── site.js
 │   ├── lib/
@@ -269,7 +273,10 @@ success/
 │   │   ├── jquery/
 │   │   ├── jquery-validation/
 │   │   └── jquery-validation-unobtrusive/
-│   └── favicon.ico
+│   ├── favicon.ico
+│   ├── manifest.webmanifest
+│   ├── offline.html
+│   └── service-worker.js
 ├── Properties/
 │   └── launchSettings.json
 ├── .github/
@@ -296,7 +303,6 @@ Punto de entrada de la aplicacion. Configura servicios, autenticacion, clientes 
 Responsabilidades:
 
 - Leer la seccion `CentralApi`.
-- Registrar `CentralApiOptions`.
 - Registrar `IHttpContextAccessor`.
 - Crear `HttpClient` tipado para `ITicketService`.
 - Crear `HttpClient` nombrado `CentralApi` para login/logout.
@@ -500,16 +506,6 @@ DTOs internos:
 - `ValidateTicketApiResult`: resultado de validacion.
 - `TicketDetailApiDto`: detalle del ticket recibido.
 
-### `Services/CentralApiOptions.cs`
-
-Clase que representa la configuracion `CentralApi`.
-
-Propiedades:
-
-- `BaseUrl`
-- `ValidateTicketPath`
-- `ValidateCodeProperty`
-- `TimeoutSeconds`
 - `BearerToken`
 
 Se usa con el patron Options de ASP.NET Core.
@@ -606,7 +602,10 @@ Incluye:
 
 - `meta charset`
 - viewport responsive
+- metadatos PWA y color de tema
 - titulo dinamico
+- manifest web
+- icono instalable
 - Font Awesome desde CDN
 - `layout.css`
 - `site.css`
@@ -618,6 +617,7 @@ Incluye:
 - enlace de login si no esta autenticado
 - `<main class="page">` para renderizar la vista actual
 - seccion opcional `Scripts`
+- registro del service worker
 
 ### `Views/Shared/_Layout.cshtml.css`
 
@@ -729,6 +729,34 @@ Define:
 ### `wwwroot/favicon.ico`
 
 Icono del sitio mostrado por el navegador.
+
+### `wwwroot/manifest.webmanifest`
+
+Manifest PWA. Define nombre, nombre corto, colores, modo standalone, scope, URL inicial, iconos y acceso rapido a la pantalla de validacion.
+
+### `wwwroot/service-worker.js`
+
+Service worker de la PWA.
+
+Comportamiento:
+
+- precachea manifest, pagina offline, iconos, CSS y JavaScript propios;
+- limpia caches viejos al activarse;
+- usa pagina offline solo para navegaciones cuando no hay conexion;
+- usa estrategia cache-first con actualizacion en segundo plano para assets estaticos;
+- no intercepta requests `POST`, por lo que la validacion de tickets siempre va al servidor.
+
+### `wwwroot/offline.html`
+
+Pagina offline simple. Se muestra cuando el navegador intenta navegar sin conexion y no puede cargar la app desde el servidor.
+
+### `wwwroot/icons/icon.svg`
+
+Icono principal de la PWA.
+
+### `wwwroot/icons/maskable-icon.svg`
+
+Icono maskable de la PWA para lanzadores de sistemas operativos que recortan el icono segun su propia forma.
 
 ### `wwwroot/lib/bootstrap/*`
 
@@ -1055,6 +1083,28 @@ Clases visuales principales:
 - `.ticket-details`
 - `.auth-shell`
 - `.auth-panel`
+
+## PWA
+
+La aplicacion esta preparada para instalarse como Progressive Web App.
+
+Archivos principales:
+
+- `wwwroot/manifest.webmanifest`: configuracion instalable de la app.
+- `wwwroot/service-worker.js`: cache de assets estaticos y fallback offline.
+- `wwwroot/offline.html`: pantalla mostrada cuando no hay conexion.
+- `wwwroot/icons/icon.svg`: icono principal.
+- `wwwroot/icons/maskable-icon.svg`: icono adaptable para launchers.
+
+El layout compartido `Views/Shared/_Layout.cshtml` enlaza el manifest, define `theme-color` y registra el service worker al cargar la pagina.
+
+Notas de uso:
+
+- En local se puede probar desde `localhost`.
+- En produccion debe servirse por HTTPS para que el navegador permita instalar la PWA y registrar el service worker.
+- La app puede abrir como standalone y mantener los assets principales en cache.
+- La validacion de tickets no funciona offline porque depende de la API central y no se cachean respuestas sensibles ni solicitudes `POST`.
+- Si se cambian assets estaticos importantes, se debe subir la version de `CACHE_NAME` en `wwwroot/service-worker.js` para forzar renovacion de cache.
 
 ## Docker
 
