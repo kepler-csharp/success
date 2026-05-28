@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json.Nodes;
 using System.Text.Json;
 using success.Models.CentralApi;
 using Success.Models.Responses;
@@ -18,17 +19,22 @@ public class ApiTicketService : ITicketService
 
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<ApiTicketService> _logger;
     private readonly string _validateTicketPath;
+    private readonly string _validateCodeProperty;
     private readonly string? _bearerToken;
 
     public ApiTicketService(
         HttpClient httpClient,
         IHttpContextAccessor httpContextAccessor,
+        ILogger<ApiTicketService> logger,
         IConfiguration configuration)
     {
         _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
         _validateTicketPath = configuration["CentralApi:ValidateTicketPath"] ?? "/api/scanner/validate";
+        _validateCodeProperty = NormalizeCodeProperty(configuration["CentralApi:ValidateCodeProperty"]);
         _bearerToken = configuration["CentralApi:BearerToken"];
 
         if (!string.IsNullOrWhiteSpace(_bearerToken))
@@ -53,20 +59,35 @@ public class ApiTicketService : ITicketService
             // La API central recibe el codigo y una descripcion del escaner.
             var apiResponse = await _httpClient.PostAsJsonAsync(
                 _validateTicketPath,
-                new ValidateTicketApiRequest(code, GetDeviceInfo()),
+                BuildValidateRequest(code),
                 JsonOptions);
 
-            if (apiResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            var json = await apiResponse.Content.ReadAsStringAsync();
+            var validation = ReadApiResponse(json, apiResponse.IsSuccessStatusCode, apiResponse.StatusCode, code);
+
+            if (validation != null)
             {
-                return Response(false, "Could not check ticket", "This entry station is not authorized.", "error");
+                return MapValidationResult(validation);
             }
 
-            var json = await apiResponse.Content.ReadAsStringAsync();
-            var validation = ReadApiResponse(json);
-
-            if (validation?.Data != null)
+            if (apiResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return MapValidationResult(validation.Data, validation.Message, code);
+                _logger.LogWarning(
+                    "Central API rejected ticket validation with 401. Path: {Path}. Response: {Response}",
+                    _validateTicketPath,
+                    Truncate(json));
+
+                return Response(false, "Sesion expirada", "Cierre sesion e ingrese nuevamente.", "error");
+            }
+
+            if (apiResponse.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _logger.LogWarning(
+                    "Central API rejected ticket validation with 403. Path: {Path}. Response: {Response}",
+                    _validateTicketPath,
+                    Truncate(json));
+
+                return Response(false, "Estacion no autorizada", "Este usuario o punto de entrada no tiene permiso para validar tickets aqui.", "error");
             }
 
             if (!apiResponse.IsSuccessStatusCode)
@@ -90,6 +111,15 @@ public class ApiTicketService : ITicketService
         }
     }
 
+    private JsonObject BuildValidateRequest(string code)
+    {
+        return new JsonObject
+        {
+            [_validateCodeProperty] = code,
+            ["deviceInfo"] = GetDeviceInfo()
+        };
+    }
+
     private void ApplyAuthorizationHeader()
     {
         // Prioriza el token del operador autenticado; si no existe usa el token fijo.
@@ -109,51 +139,194 @@ public class ApiTicketService : ITicketService
         return string.IsNullOrWhiteSpace(name) ? "Web scanner" : $"Web scanner - {name}";
     }
 
-    private static ScannerApiResponse? ReadApiResponse(string json)
+    private static string NormalizeCodeProperty(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "qrCode" : value.Trim();
+    }
+
+    private static string Truncate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        return value.Length <= 500 ? value : value[..500];
+    }
+
+    private static ParsedTicketValidation? ReadApiResponse(
+        string json,
+        bool httpSuccess,
+        HttpStatusCode statusCode,
+        string scannedCode)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
             return null;
         }
 
-        return JsonSerializer.Deserialize<ScannerApiResponse>(json, JsonOptions);
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var wrapperMessage = GetString(root, "message", "error", "detail", "title");
+        var result = TryGetProperty(root, "data", out var data) && data.ValueKind != JsonValueKind.Null
+            ? data
+            : root;
+
+        var explicitValidity = GetBool(result, "isValid", "valid", "allowed", "success")
+                               ?? GetBool(root, "isValid", "valid", "allowed", "success");
+
+        var ticket = TryMapTicket(result, scannedCode) ?? TryMapTicket(root, scannedCode);
+        var message = FirstText(
+            GetString(result, "message", "error", "detail", "title"),
+            wrapperMessage);
+        var wasAlreadyUsed = ticket?.Status.Equals("Already used", StringComparison.OrdinalIgnoreCase) == true
+                             || TextLooksUsed(message);
+        var doesNotExist = statusCode == HttpStatusCode.NotFound || TextLooksMissing(message);
+
+        if (doesNotExist)
+        {
+            return new ParsedTicketValidation
+            {
+                IsValid = false,
+                Reason = TicketValidationReason.NotFound,
+                Message = message,
+                Ticket = ticket
+            };
+        }
+
+        if (wasAlreadyUsed)
+        {
+            return new ParsedTicketValidation
+            {
+                IsValid = false,
+                Reason = TicketValidationReason.AlreadyScanned,
+                Message = message,
+                Ticket = ticket
+            };
+        }
+
+        if (explicitValidity == null && ticket == null && string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        var isValid = explicitValidity ?? (ticket != null && httpSuccess);
+
+        return new ParsedTicketValidation
+        {
+            IsValid = isValid,
+            Reason = isValid ? TicketValidationReason.Valid : TicketValidationReason.Rejected,
+            Message = message,
+            Ticket = ticket
+        };
     }
 
-    private static TicketValidationResponse MapValidationResult(
-        ValidateTicketApiResult result,
-        string? wrapperMessage,
-        string scannedCode)
+    private static TicketValidationResponse MapValidationResult(ParsedTicketValidation result)
     {
         // Convierte la respuesta externa al formato que consume la pantalla.
-        var message = FirstText(result.Message, wrapperMessage)
-                      ?? (result.IsValid ? "Valid ticket. Access granted." : "Entry was not authorized.");
-
-        return new TicketValidationResponse
+        var response = new TicketValidationResponse
         {
             Success = result.IsValid,
             Title = result.IsValid ? "Entry allowed" : "Entry rejected",
-            Message = message,
+            Message = FirstText(result.Message)
+                      ?? (result.IsValid ? "Valid ticket. Access granted." : "Entry was not authorized."),
             Type = result.IsValid ? "success" : "error",
-            Ticket = result.Ticket == null ? null : MapTicket(result.Ticket, scannedCode)
+            Ticket = result.Ticket
         };
+
+        if (result.Reason == TicketValidationReason.NotFound)
+        {
+            response.Title = "Ticket no existe";
+            response.Message = "Este ticket no existe.";
+        }
+        else if (result.Reason == TicketValidationReason.AlreadyScanned)
+        {
+            response.Title = "Ticket ya escaneado";
+            response.Message = "Ya se escaneo anteriormente.";
+        }
+        else if (result.Reason == TicketValidationReason.Valid)
+        {
+            response.Title = "Ticket correcto";
+            response.Message = "Es correcto, siga.";
+        }
+
+        return response;
     }
 
-    private static TicketValidationResponse.TicketInfo MapTicket(TicketDetailApiDto ticket, string scannedCode)
+    private static TicketValidationResponse.TicketInfo? TryMapTicket(JsonElement result, string scannedCode)
     {
-        var ticketId = JsonValueToString(ticket.TicketId);
+        if (TryGetProperty(result, "ticket", out var ticket)
+            || TryGetProperty(result, "ticketInfo", out ticket)
+            || TryGetProperty(result, "ticketData", out ticket))
+        {
+            return MapTicket(ticket, scannedCode);
+        }
+
+        return LooksLikeTicket(result) ? MapTicket(result, scannedCode) : null;
+    }
+
+    private static TicketValidationResponse.TicketInfo MapTicket(JsonElement ticket, string scannedCode)
+    {
+        var usedAt = GetDateTime(ticket, "usedAt", "scannedAt", "checkedAt", "scanTime");
+        var wasAlreadyUsed = GetBool(ticket, "wasAlreadyUsed", "alreadyUsed", "isUsed", "used")
+                             ?? TextLooksUsed(GetString(ticket, "status", "state"));
+        var status = wasAlreadyUsed == true
+            ? "Already used"
+            : GetString(ticket, "status", "state") ?? "";
 
         return new TicketValidationResponse.TicketInfo
         {
-            Code = string.IsNullOrWhiteSpace(ticketId) ? scannedCode : ticketId,
-            ClientName = ticket.HolderEmail ?? "",
-            Email = ticket.HolderEmail ?? "",
-            EventName = ticket.EventName ?? "",
-            VenueName = ticket.VenueName ?? "",
-            SeatNumber = ticket.SeatLabel ?? "",
-            Status = ticket.WasAlreadyUsed ? "Already used" : "",
-            ScanTime = ticket.UsedAt ?? DateTime.UtcNow,
-            ShowtimeStart = ticket.ShowtimeStart
+            Code = FirstText(
+                GetString(ticket, "ticketId", "id", "code", "ticketCode", "qrCode"),
+                scannedCode) ?? scannedCode,
+            ClientName = FirstText(
+                GetString(ticket, "holderName", "clientName", "customerName", "fullName", "name"),
+                GetNestedString(ticket, "holder", "name", "fullName", "email"),
+                GetNestedString(ticket, "user", "name", "fullName", "email"),
+                GetNestedString(ticket, "customer", "name", "fullName", "email"),
+                GetString(ticket, "holderEmail", "email", "clientEmail", "userEmail")) ?? "",
+            Email = FirstText(
+                GetString(ticket, "holderEmail", "email", "clientEmail", "userEmail"),
+                GetNestedString(ticket, "holder", "email"),
+                GetNestedString(ticket, "user", "email"),
+                GetNestedString(ticket, "customer", "email")) ?? "",
+            EventName = FirstText(
+                GetString(ticket, "eventName"),
+                GetNestedString(ticket, "event", "name", "title")) ?? "",
+            VenueName = FirstText(
+                GetString(ticket, "venueName"),
+                GetNestedString(ticket, "venue", "name")) ?? "",
+            SeatNumber = GetString(ticket, "seatLabel", "seatNumber", "seat") ?? "",
+            Row = GetString(ticket, "row", "rowLabel") ?? "",
+            TicketType = GetString(ticket, "ticketType", "type") ?? "",
+            EntryMode = GetString(ticket, "entryMode") ?? "",
+            Status = status,
+            ScanTime = usedAt ?? DateTime.UtcNow,
+            ShowtimeStart = GetDateTime(ticket, "showtimeStart", "eventStart", "startsAt", "startTime"),
+            PhoneNumber = FirstText(
+                GetString(ticket, "phoneNumber", "phone"),
+                GetNestedString(ticket, "holder", "phoneNumber", "phone"),
+                GetNestedString(ticket, "user", "phoneNumber", "phone"),
+                GetNestedString(ticket, "customer", "phoneNumber", "phone")) ?? "",
+            PhotoUrl = FirstText(
+                GetString(ticket, "photoUrl", "avatarUrl"),
+                GetNestedString(ticket, "holder", "photoUrl", "avatarUrl"),
+                GetNestedString(ticket, "user", "photoUrl", "avatarUrl"),
+                GetNestedString(ticket, "customer", "photoUrl", "avatarUrl")) ?? ""
         };
+    }
+
+    private static bool LooksLikeTicket(JsonElement element)
+    {
+        return element.ValueKind == JsonValueKind.Object
+               && (TryGetProperty(element, "ticketId", out _)
+                   || TryGetProperty(element, "ticketCode", out _)
+                   || TryGetProperty(element, "qrCode", out _)
+                   || TryGetProperty(element, "holderEmail", out _)
+                   || TryGetProperty(element, "eventName", out _)
+                   || TryGetProperty(element, "seatLabel", out _)
+                   || TryGetProperty(element, "wasAlreadyUsed", out _)
+                   || TryGetProperty(element, "usedAt", out _));
     }
 
     private static string? JsonValueToString(JsonElement value)
@@ -166,6 +339,102 @@ public class ApiTicketService : ITicketService
             JsonValueKind.False => "false",
             _ => null
         };
+    }
+
+    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+    {
+        value = default;
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string? GetString(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (TryGetProperty(element, name, out var value))
+            {
+                var text = JsonValueToString(value);
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string? GetNestedString(JsonElement element, string parentName, params string[] names)
+    {
+        return TryGetProperty(element, parentName, out var parent)
+            ? GetString(parent, names)
+            : null;
+    }
+
+    private static bool? GetBool(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!TryGetProperty(element, name, out var value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return value.GetBoolean();
+            }
+
+            var text = JsonValueToString(value);
+            if (bool.TryParse(text, out var parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
+    }
+
+    private static DateTime? GetDateTime(JsonElement element, params string[] names)
+    {
+        var text = GetString(element, names);
+        return DateTime.TryParse(text, out var parsed) ? parsed : null;
+    }
+
+    private static bool TextLooksUsed(string? status)
+    {
+        return !string.IsNullOrWhiteSpace(status)
+               && (status.Contains("already", StringComparison.OrdinalIgnoreCase)
+                   || status.Contains("used", StringComparison.OrdinalIgnoreCase)
+                   || status.Contains("scanned", StringComparison.OrdinalIgnoreCase)
+                   || status.Contains("escaneado", StringComparison.OrdinalIgnoreCase)
+                   || status.Contains("usado", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool TextLooksMissing(string? message)
+    {
+        return !string.IsNullOrWhiteSpace(message)
+               && (message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("does not exist", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("doesn't exist", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("no existe", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("no encontrado", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("no encontrada", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("inexistente", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string? FirstText(params string?[] values)
@@ -182,5 +451,21 @@ public class ApiTicketService : ITicketService
             Message = message,
             Type = type
         };
+    }
+
+    private sealed class ParsedTicketValidation
+    {
+        public bool IsValid { get; set; }
+        public TicketValidationReason Reason { get; set; } = TicketValidationReason.Rejected;
+        public string? Message { get; set; }
+        public TicketValidationResponse.TicketInfo? Ticket { get; set; }
+    }
+
+    private enum TicketValidationReason
+    {
+        Valid,
+        AlreadyScanned,
+        NotFound,
+        Rejected
     }
 }
