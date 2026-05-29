@@ -343,7 +343,7 @@ public class ApiTicketService : ITicketService
             Title = result.IsValid ? "Ingreso permitido" : "Ingreso rechazado",
             Message = result.IsValid ? "Ticket valido. Acceso permitido." : "El ingreso no fue autorizado.",
             Type = result.IsValid ? "success" : "error",
-            Ticket = result.Ticket
+            Ticket = result.IsValid ? result.Ticket : null
         };
 
         if (result.Reason == TicketValidationReason.NotFound)
@@ -560,6 +560,8 @@ public class ApiTicketService : ITicketService
                || text.StartsWith('[')
                || text.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                || text.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+               || text.Length >= 32 && !text.Any(char.IsWhiteSpace) && text.All(character =>
+                   char.IsLetterOrDigit(character) || character is '_' or '-' or '=')
                || text.Count(character => character == '.') == 2 && text.All(character =>
                    char.IsLetterOrDigit(character) || character is '_' or '-' or '.');
     }

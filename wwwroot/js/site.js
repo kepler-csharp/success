@@ -310,7 +310,7 @@ function showResult(data) {
     document.getElementById("resultTitle").textContent = toUserText(data.title || "Resultado");
     document.getElementById("resultMessage").textContent = toUserText(data.message || "");
 
-    if (!data.ticket) {
+    if (!data.success || !data.ticket) {
         ticketDetails.classList.add("hidden");
         return;
     }
@@ -369,6 +369,7 @@ function looksLikePayload(value) {
         || value.startsWith("{")
         || value.startsWith("[")
         || /^https?:\/\//i.test(value)
+        || (value.length >= 32 && !/\s/.test(value) && /^[A-Za-z0-9_=-]+$/.test(value))
         || /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
