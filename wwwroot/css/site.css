@@ -451,7 +451,7 @@ label {
     margin-top: 18px;
 }
 
-.ticket-details div {
+.ticket-details > div {
     padding: 11px 12px;
     border: 1px solid rgba(32, 37, 43, 0.1);
     border-radius: 8px;
