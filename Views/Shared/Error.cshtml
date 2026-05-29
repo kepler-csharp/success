@@ -1,14 +1,14 @@
 ﻿@model success.Models.ErrorViewModel
 @{
-    ViewData["Title"] = "Could not load";
+    ViewData["Title"] = "No se pudo cargar";
 }
 
-<h1 class="text-danger">Could not load the page.</h1>
-<h2 class="text-danger">Try again in a few moments.</h2>
+<h1 class="text-danger">No se pudo cargar la pagina.</h1>
+<h2 class="text-danger">Intenta de nuevo en unos momentos.</h2>
 
 @if (Model.ShowRequestId)
 {
     <p>
-        <strong>Support code:</strong> <code>@Model.RequestId</code>
+        <strong>Codigo de soporte:</strong> <code>@Model.RequestId</code>
     </p>
 }

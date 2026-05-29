@@ -49,7 +49,7 @@ public class ApiTicketService : ITicketService
         var code = (scanCode ?? "").Trim();
         if (string.IsNullOrWhiteSpace(code))
         {
-            return Response(false, "Code required", "Scan the QR or type the ticket code.", "error");
+            return Response(false, "Codigo requerido", "Escanea el QR o escribe el codigo del ticket.", "error");
         }
 
         try
@@ -92,22 +92,22 @@ public class ApiTicketService : ITicketService
 
             if (!apiResponse.IsSuccessStatusCode)
             {
-                return Response(false, "Could not check ticket", "The system could not check this ticket right now.", "error");
+                return Response(false, "No se pudo validar el ticket", "El sistema no pudo validar este ticket en este momento.", "error");
             }
 
-            return Response(false, "Could not check ticket", "The system did not return ticket information.", "error");
+            return Response(false, "No se pudo validar el ticket", "El sistema no devolvio informacion del ticket.", "error");
         }
         catch (JsonException)
         {
-            return Response(false, "Could not check ticket", "The information received could not be read.", "error");
+            return Response(false, "No se pudo validar el ticket", "No se pudo leer la informacion recibida.", "error");
         }
         catch (HttpRequestException)
         {
-            return Response(false, "No connection", "Could not reach the ticket system.", "error");
+            return Response(false, "Sin conexion", "No se pudo conectar con el sistema de tickets.", "error");
         }
         catch (TaskCanceledException)
         {
-            return Response(false, "Timed out", "The system took too long to respond.", "error");
+            return Response(false, "Tiempo agotado", "El sistema tardo demasiado en responder.", "error");
         }
     }
 
@@ -136,7 +136,7 @@ public class ApiTicketService : ITicketService
     {
         var context = _httpContextAccessor.HttpContext;
         var name = context?.User.FindFirstValue(ClaimTypes.Name) ?? context?.User.Identity?.Name;
-        return string.IsNullOrWhiteSpace(name) ? "Web scanner" : $"Web scanner - {name}";
+        return string.IsNullOrWhiteSpace(name) ? "Escaner web" : $"Escaner web - {name}";
     }
 
     private static string NormalizeCodeProperty(string? value)
@@ -227,9 +227,8 @@ public class ApiTicketService : ITicketService
         var response = new TicketValidationResponse
         {
             Success = result.IsValid,
-            Title = result.IsValid ? "Entry allowed" : "Entry rejected",
-            Message = FirstText(result.Message)
-                      ?? (result.IsValid ? "Valid ticket. Access granted." : "Entry was not authorized."),
+            Title = result.IsValid ? "Ingreso permitido" : "Ingreso rechazado",
+            Message = result.IsValid ? "Ticket valido. Acceso permitido." : "El ingreso no fue autorizado.",
             Type = result.IsValid ? "success" : "error",
             Ticket = result.Ticket
         };
@@ -271,7 +270,7 @@ public class ApiTicketService : ITicketService
         var wasAlreadyUsed = GetBool(ticket, "wasAlreadyUsed", "alreadyUsed", "isUsed", "used")
                              ?? TextLooksUsed(GetString(ticket, "status", "state"));
         var status = wasAlreadyUsed == true
-            ? "Already used"
+            ? "Ya usado"
             : GetString(ticket, "status", "state") ?? "";
 
         return new TicketValidationResponse.TicketInfo

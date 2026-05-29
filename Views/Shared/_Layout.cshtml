@@ -3,7 +3,7 @@
     var pageClass = hideSidebar ? "page page-full" : "page";
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,14 +29,14 @@
             </div>
             <div>
                 <strong>Success Tickets</strong>
-                <span>Entry control</span>
+                <span>Control de ingreso</span>
             </div>
         </div>
 
         <nav class="menu">
             <a href="@Url.Action("Index", "Success")" class="menu-link active">
                 <i class="fas fa-ticket"></i>
-                <span>Check tickets</span>
+                <span>Validar tickets</span>
             </a>
             @if (User.Identity?.IsAuthenticated == true)
             {
@@ -44,7 +44,7 @@
                     @Html.AntiForgeryToken()
                     <button type="submit" class="menu-link logout-button">
                         <i class="fas fa-right-from-bracket"></i>
-                        <span>Sign out</span>
+                        <span>Cerrar sesion</span>
                     </button>
                 </form>
             }
@@ -52,7 +52,7 @@
             {
                 <a href="@Url.Action("Login", "Account")" class="menu-link">
                     <i class="fas fa-right-to-bracket"></i>
-                    <span>Sign in</span>
+                    <span>Iniciar sesion</span>
                 </a>
             }
         </nav>

@@ -13,6 +13,8 @@ namespace success.Controllers;
 [Route("Account")]
 public class AccountController : Controller
 {
+    private static readonly string[] AllowedRoles = ["Admin", "Scanner"];
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AccountController> _logger;
 
@@ -51,7 +53,7 @@ public class AccountController : Controller
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", ToUserMessage(ReadMessage(body)) ?? "Email or password is incorrect.");
+                ModelState.AddModelError("", ToUserMessage(ReadMessage(body)) ?? "Correo o contrasena incorrectos.");
                 return View(model);
             }
 
@@ -59,13 +61,23 @@ public class AccountController : Controller
             var accessToken = ReadText(body, "accessToken", "token", "jwt");
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                ModelState.AddModelError("", "Could not sign in. Try again.");
+                ModelState.AddModelError("", "No se pudo iniciar sesion. Intenta de nuevo.");
                 return View(model);
             }
 
             var refreshToken = ReadText(body, "refreshToken");
             var displayName = ReadText(body, "fullName", "name", "userName", "email") ?? model.Email;
-            var role = ReadText(body, "role", "roles") ?? "";
+            var roles = ReadRoles(body);
+            if (roles.Count == 0)
+            {
+                roles = ReadRolesFromJwt(accessToken);
+            }
+
+            if (!roles.Any(IsAllowedRole))
+            {
+                ModelState.AddModelError("", "No tienes permiso para ingresar a esta pantalla. Solo Admin y Scanner pueden acceder.");
+                return View(model);
+            }
 
             var claims = new List<Claim>
             {
@@ -79,7 +91,7 @@ public class AccountController : Controller
                 claims.Add(new Claim("refresh_token", refreshToken));
             }
 
-            if (!string.IsNullOrWhiteSpace(role))
+            foreach (var role in roles.Where(IsAllowedRole).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
@@ -93,9 +105,18 @@ public class AccountController : Controller
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
         {
             _logger.LogWarning(exception, "Central API login failed");
-            ModelState.AddModelError("", "Could not connect to sign in.");
+            ModelState.AddModelError("", "No se pudo conectar para iniciar sesion.");
             return View(model);
         }
+    }
+
+    [HttpGet("Denied")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Denied()
+    {
+        await HttpContext.SignOutAsync("Cookies");
+        TempData["AuthMessage"] = "No tienes permiso para ingresar a esta pantalla. Solo Admin y Scanner pueden acceder.";
+        return RedirectToAction(nameof(Login));
     }
 
     [HttpPost("Logout")]
@@ -141,9 +162,135 @@ public class AccountController : Controller
             return null;
         }
 
-        return message
-            .Replace("API", "system", StringComparison.OrdinalIgnoreCase)
-            .Replace("token", "session", StringComparison.OrdinalIgnoreCase);
+        var normalized = message.Trim();
+        if (normalized.Contains("invalid", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("incorrect", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("unauthorized", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("not authorized", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Correo o contrasena incorrectos.";
+        }
+
+        return null;
+    }
+
+    private static bool IsAllowedRole(string role)
+    {
+        return AllowedRoles.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<string> ReadRoles(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        try
+        {
+            var root = JsonNode.Parse(json);
+            var node = FindRoleValue(root);
+            return ReadRoleValues(node);
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<string> ReadRoleValues(JsonNode? node)
+    {
+        if (node is JsonArray array)
+        {
+            return array.SelectMany(ReadRoleValues)
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .ToArray();
+        }
+
+        if (node is JsonObject obj)
+        {
+            return obj.SelectMany(item =>
+                    string.Equals(item.Key, "name", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(item.Key, "role", StringComparison.OrdinalIgnoreCase)
+                        ? ReadRoleValues(item.Value)
+                        : [])
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .ToArray();
+        }
+
+        if (node is JsonValue value)
+        {
+            var text = value.GetValueKind() == JsonValueKind.String
+                ? value.GetValue<string>()
+                : value.ToJsonString().Trim('"');
+
+            return string.IsNullOrWhiteSpace(text) ? [] : [text];
+        }
+
+        return [];
+    }
+
+    private static IReadOnlyList<string> ReadRolesFromJwt(string accessToken)
+    {
+        try
+        {
+            var parts = accessToken.Split('.');
+            if (parts.Length < 2)
+            {
+                return [];
+            }
+
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            var root = JsonNode.Parse(json);
+            return ReadRoleValues(FindRoleValue(root));
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static JsonNode? FindRoleValue(JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            foreach (var item in obj)
+            {
+                if (IsRoleProperty(item.Key))
+                {
+                    return item.Value;
+                }
+
+                var nested = FindRoleValue(item.Value);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+        }
+
+        if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                var nested = FindRoleValue(item);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsRoleProperty(string name)
+    {
+        return name.Equals("role", StringComparison.OrdinalIgnoreCase)
+               || name.Equals("roles", StringComparison.OrdinalIgnoreCase)
+               || name.EndsWith("/role", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ReadText(string json, params string[] names)

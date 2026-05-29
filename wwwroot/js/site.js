@@ -25,8 +25,8 @@ scanForm.addEventListener("submit", async function (event) {
     if (code === "") {
         showResult({
             success: false,
-            title: "Code required",
-            message: "Scan the QR or type the ticket code.",
+            title: "Codigo requerido",
+            message: "Escanea el QR o escribe el codigo del ticket.",
             type: "error"
         });
         return;
@@ -75,8 +75,8 @@ async function validateTicket(code, options = {}) {
         markApiStatus(false);
         showResult({
             success: false,
-            title: "Could not check ticket",
-            message: "Check the connection and try again.",
+            title: "No se pudo validar el ticket",
+            message: "Revisa la conexion e intenta de nuevo.",
             type: "error"
         });
     }
@@ -89,17 +89,17 @@ async function startCameraScanner() {
 
     // En celulares la camara solo funciona en HTTPS o localhost.
     if (!window.isSecureContext && !["localhost", "127.0.0.1"].includes(window.location.hostname)) {
-        setCameraStatus("Camera requires HTTPS", false);
+        setCameraStatus("La camara requiere HTTPS", false);
         return;
     }
 
     if (typeof Html5Qrcode === "undefined") {
-        setCameraStatus("QR scanner is not available", false);
+        setCameraStatus("El lector QR no esta disponible", false);
         return;
     }
 
     try {
-        setCameraStatus("Requesting permission...", true);
+        setCameraStatus("Solicitando permiso...", true);
         // Html5Qrcode abre la camara y decodifica QR en el navegador.
         const scannerOptions = typeof Html5QrcodeSupportedFormats === "undefined"
             ? {}
@@ -123,10 +123,10 @@ async function startCameraScanner() {
         startCameraButton.classList.add("hidden");
         stopCameraButton.classList.remove("hidden");
         scanNextButton.classList.add("hidden");
-        setCameraStatus("Point at a QR", true);
+        setCameraStatus("Apunta a un QR", true);
     } catch {
         isScannerRunning = false;
-        setCameraStatus("Camera could not start", false);
+        setCameraStatus("No se pudo iniciar la camara", false);
         startCameraButton.classList.remove("hidden");
         stopCameraButton.classList.add("hidden");
         scanNextButton.classList.add("hidden");
@@ -142,7 +142,7 @@ async function stopCameraScanner() {
         await qrScanner.stop();
         qrScanner.clear();
     } catch {
-        // The camera may already be stopped by the browser.
+        // El navegador puede haber detenido la camara previamente.
     }
 
     isScannerRunning = false;
@@ -151,7 +151,7 @@ async function stopCameraScanner() {
     startCameraButton.classList.remove("hidden");
     stopCameraButton.classList.add("hidden");
     scanNextButton.classList.add("hidden");
-    setCameraStatus("Camera off", true);
+    setCameraStatus("Camara apagada", true);
     scanInput.focus();
 }
 
@@ -164,9 +164,9 @@ function resumeCameraScanner() {
         qrScanner.resume();
         isScanLocked = false;
         scanNextButton.classList.add("hidden");
-        setCameraStatus("Point at a QR", true);
+        setCameraStatus("Apunta a un QR", true);
     } catch {
-        setCameraStatus("Restart camera", false);
+        setCameraStatus("Reinicia la camara", false);
         startCameraButton.classList.remove("hidden");
         scanNextButton.classList.add("hidden");
     }
@@ -181,7 +181,7 @@ async function handleQrScan(decodedText) {
 
     isScanLocked = true;
     scanInput.value = code;
-    setCameraStatus("QR read. Verifying...", true);
+    setCameraStatus("QR leido. Validando...", true);
 
     if (navigator.vibrate) {
         navigator.vibrate(80);
@@ -191,7 +191,7 @@ async function handleQrScan(decodedText) {
         // Se pausa para evitar validar varias veces el mismo QR.
         qrScanner.pause(true);
     } catch {
-        // Some browsers may not support pausing with the current camera state.
+        // Algunos navegadores no permiten pausar con el estado actual de la camara.
     }
 
     // Reutiliza la misma validacion que usa el formulario manual.
@@ -199,7 +199,7 @@ async function handleQrScan(decodedText) {
 
     if (isScannerRunning) {
         scanNextButton.classList.remove("hidden");
-        setCameraStatus("Verified. Ready for next scan.", true);
+        setCameraStatus("Validado. Listo para el siguiente escaneo.", true);
     }
 }
 
@@ -222,8 +222,8 @@ function setLoading() {
     resultCard.className = "panel result-panel loading";
     verdictMark.className = "verdict-mark loading";
     verdictMark.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    document.getElementById("resultTitle").textContent = "Checking...";
-    document.getElementById("resultMessage").textContent = "Please wait a moment.";
+    document.getElementById("resultTitle").textContent = "Validando...";
+    document.getElementById("resultMessage").textContent = "Espera un momento.";
     ticketDetails.classList.add("hidden");
 }
 
@@ -233,7 +233,7 @@ function showResult(data) {
     resultCard.className = `panel result-panel ${resultType}`;
     verdictMark.className = `verdict-mark ${data.success ? "success" : "error"}`;
     verdictMark.innerHTML = data.success ? '<i class="fas fa-check"></i>' : '<i class="fas fa-xmark"></i>';
-    document.getElementById("resultTitle").textContent = toUserText(data.title || "Result");
+    document.getElementById("resultTitle").textContent = toUserText(data.title || "Resultado");
     document.getElementById("resultMessage").textContent = toUserText(data.message || "");
 
     if (!data.ticket) {
@@ -246,12 +246,12 @@ function showResult(data) {
     const seat = [ticket.row, ticket.seatNumber].filter(Boolean).join("-");
     const typeStatus = [ticket.ticketType || ticket.entryMode, ticket.status].filter(Boolean).join(" / ");
 
-    document.getElementById("clientName").textContent = ticket.clientName || "No name";
-    document.getElementById("clientContact").textContent = contact || "No contact";
+    document.getElementById("clientName").textContent = ticket.clientName || "Sin nombre";
+    document.getElementById("clientContact").textContent = contact || "Sin contacto";
     document.getElementById("eventName").textContent = ticket.eventName || "--";
     document.getElementById("venueName").textContent = ticket.venueName || "--";
     document.getElementById("showtimeStart").textContent = formatDateTime(ticket.showtimeStart);
-    document.getElementById("seatNumber").textContent = seat || "No seat";
+    document.getElementById("seatNumber").textContent = seat || "Sin asiento";
     document.getElementById("ticketType").textContent = typeStatus || "--";
     document.getElementById("ticketCode").textContent = ticket.code || "--";
     document.getElementById("scanTime").textContent = formatDateTime(ticket.scanTime);
@@ -270,14 +270,20 @@ function showResult(data) {
 
 function markApiStatus(isOnline) {
     apiStatus.className = `status ${isOnline ? "online" : "offline"}`;
-    apiStatus.textContent = isOnline ? "Ready to check" : "No connection";
+    apiStatus.textContent = isOnline ? "Listo para validar" : "Sin conexion";
 }
 
 function toUserText(value) {
     return String(value || "")
-        .replace(/\bapi\b/gi, "system")
-        .replace(/\bjson\b/gi, "response")
-        .replace(/\btoken\b/gi, "session");
+        .replace(/\bapi\b/gi, "sistema")
+        .replace(/\bjson\b/gi, "respuesta")
+        .replace(/\btoken\b/gi, "sesion")
+        .replace(/\bEntry allowed\b/gi, "Ingreso permitido")
+        .replace(/\bEntry rejected\b/gi, "Ingreso rechazado")
+        .replace(/\bValid ticket\. Access granted\./gi, "Ticket valido. Acceso permitido.")
+        .replace(/\bEntry was not authorized\./gi, "El ingreso no fue autorizado.")
+        .replace(/\bAlready used\b/gi, "Ya usado")
+        .replace(/\bUsed\b/gi, "Usado");
 }
 
 function formatDateTime(value) {
@@ -290,7 +296,7 @@ function formatDateTime(value) {
         return "--";
     }
 
-    return date.toLocaleString("en-US", {
+    return date.toLocaleString("es-CO", {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -301,13 +307,13 @@ function formatDateTime(value) {
 function updateClock() {
     const now = new Date();
 
-    currentDate.textContent = now.toLocaleDateString("en-US", {
+    currentDate.textContent = now.toLocaleDateString("es-CO", {
         weekday: "long",
         day: "2-digit",
         month: "short"
     });
 
-    currentTime.textContent = now.toLocaleTimeString("en-US", {
+    currentTime.textContent = now.toLocaleTimeString("es-CO", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit"

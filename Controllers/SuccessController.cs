@@ -5,7 +5,7 @@ using success.Services.Interfaces;
 
 namespace success.Controllers;
 
-[Authorize]
+[Authorize(Roles = "Admin,Scanner")]
 [Route("Success")]
 public class SuccessController : Controller
 {
@@ -32,8 +32,8 @@ public class SuccessController : Controller
             return BadRequest(new TicketValidationResponse
             {
                 Success = false,
-                Title = "Code required",
-                Message = "Scan the QR or type the ticket code.",
+                Title = "Codigo requerido",
+                Message = "Escanea el QR o escribe el codigo del ticket.",
                 Type = "error"
             });
         }

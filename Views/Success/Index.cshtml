@@ -1,11 +1,11 @@
 ﻿@{
-    ViewData["Title"] = "Entry control";
+    ViewData["Title"] = "Control de ingreso";
 }
 
 <section class="topbar">
     <div>
         <p class="eyebrow">Success Tickets</p>
-        <h1>Entry control</h1>
+        <h1>Control de ingreso</h1>
     </div>
     <div class="clock-box">
         <span id="currentDate">--</span>
@@ -17,21 +17,21 @@
     <div class="panel">
         <div class="panel-header">
             <div>
-                <h2>Scan ticket</h2>
-                <p>Scan the ticket QR. You can also type the code if needed.</p>
+                <h2>Escanear ticket</h2>
+                <p>Escanea el QR del ticket. Tambien puedes escribir el codigo si hace falta.</p>
             </div>
-            <span id="apiStatus" class="status online">Ready to check</span>
+            <span id="apiStatus" class="status online">Listo para validar</span>
         </div>
 
         <form id="scanForm" autocomplete="off">
             @Html.AntiForgeryToken()
-            <label for="scanInput">Ticket code</label>
+            <label for="scanInput">Codigo del ticket</label>
             <div class="scan-row">
                 <i class="fas fa-qrcode"></i>
-                <input id="scanInput" name="scanCode" type="text" placeholder="Scan or type the code" autofocus inputmode="text" enterkeyhint="done" autocapitalize="off" spellcheck="false">
+                <input id="scanInput" name="scanCode" type="text" placeholder="Escanea o escribe el codigo" autofocus inputmode="text" enterkeyhint="done" autocapitalize="off" spellcheck="false">
                 <button type="submit">
                     <i class="fas fa-check"></i>
-                    Check
+                    Validar
                 </button>
             </div>
         </form>
@@ -39,17 +39,17 @@
         <div class="actions">
             <button type="button" id="clearButton" class="soft-button">
                 <i class="fas fa-eraser"></i>
-                Clear
+                Limpiar
             </button>
         </div>
 
         <div class="camera-panel">
             <div class="camera-header">
                 <div>
-                    <h3>Phone camera</h3>
-                    <p>Read the QR with the device camera and verify it automatically.</p>
+                    <h3>Camara del telefono</h3>
+                    <p>Lee el QR con la camara del dispositivo y validalo automaticamente.</p>
                 </div>
-                <span id="cameraStatus" class="camera-status">Camera off</span>
+                <span id="cameraStatus" class="camera-status">Camara apagada</span>
             </div>
 
             <div id="qrReader" class="qr-reader"></div>
@@ -57,15 +57,15 @@
             <div class="actions">
                 <button type="button" id="startCameraButton" class="soft-button">
                     <i class="fas fa-camera"></i>
-                    Use camera
+                    Usar camara
                 </button>
                 <button type="button" id="scanNextButton" class="soft-button hidden">
                     <i class="fas fa-rotate-right"></i>
-                    Scan next
+                    Escanear otro
                 </button>
                 <button type="button" id="stopCameraButton" class="soft-button hidden">
                     <i class="fas fa-video-slash"></i>
-                    Stop camera
+                    Detener camara
                 </button>
             </div>
         </div>
@@ -75,45 +75,45 @@
         <div id="verdictMark" class="verdict-mark">
             <i class="fas fa-ticket"></i>
         </div>
-        <p class="eyebrow">Result</p>
-        <h2 id="resultTitle">Waiting for scan</h2>
-        <p id="resultMessage">Scan a QR to see if the person can enter.</p>
+        <p class="eyebrow">Resultado</p>
+        <h2 id="resultTitle">Esperando escaneo</h2>
+        <p id="resultMessage">Escanea un QR para saber si la persona puede ingresar.</p>
 
         <div id="ticketDetails" class="ticket-details hidden">
             <div class="person-card">
                 <img id="clientPhoto" src="" alt="">
                 <div>
-                    <span>Person</span>
+                    <span>Persona</span>
                     <strong id="clientName">--</strong>
                     <small id="clientContact">--</small>
                 </div>
             </div>
             <div>
-                <span>Event</span>
+                <span>Evento</span>
                 <strong id="eventName">--</strong>
             </div>
             <div>
-                <span>Place</span>
+                <span>Lugar</span>
                 <strong id="venueName">--</strong>
             </div>
             <div>
-                <span>Time</span>
+                <span>Hora</span>
                 <strong id="showtimeStart">--</strong>
             </div>
             <div>
-                <span>Seat</span>
+                <span>Asiento</span>
                 <strong id="seatNumber">--</strong>
             </div>
             <div>
-                <span>Type / status</span>
+                <span>Tipo / estado</span>
                 <strong id="ticketType">--</strong>
             </div>
             <div>
-                <span>Code</span>
+                <span>Codigo</span>
                 <strong id="ticketCode">--</strong>
             </div>
             <div>
-                <span>Checked</span>
+                <span>Validado</span>
                 <strong id="scanTime">--</strong>
             </div>
         </div>

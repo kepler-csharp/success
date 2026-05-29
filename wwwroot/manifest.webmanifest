@@ -1,5 +1,5 @@
 {
-  "name": "Success Tickets - Entry Control",
+  "name": "Success Tickets - Control de ingreso",
   "short_name": "Success Tickets",
   "description": "Control de ingreso para eventos mediante escaneo y validacion de tickets.",
   "start_url": "/",
