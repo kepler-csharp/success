@@ -122,7 +122,7 @@ h2 {
 .auth-form select:focus {
     border-color: var(--primary);
     background: #ffffff;
-    box-shadow: 0 0 0 4px rgba(15, 143, 136, 0.16);
+    box-shadow: 0 0 0 4px rgba(253, 123, 65, 0.18);
     outline: none;
 }
 
@@ -141,17 +141,17 @@ h2 {
     margin-top: 8px;
     border: 0;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--primary), #18aaa1);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #ffffff;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 12px 22px rgba(15, 143, 136, 0.24);
+    box-shadow: 0 12px 22px rgba(253, 123, 65, 0.28);
     transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .auth-form button:hover {
     background: var(--primary-dark);
-    box-shadow: 0 10px 18px rgba(15, 143, 136, 0.2);
+    box-shadow: 0 10px 18px rgba(253, 123, 65, 0.22);
     transform: translateY(-1px);
 }
 
@@ -167,7 +167,7 @@ h2 {
     margin-top: 14px;
     padding: 10px 12px;
     border-radius: 8px;
-    border: 1px solid rgba(15, 143, 136, 0.2);
+    border: 1px solid rgba(253, 123, 65, 0.22);
     background: var(--primary-soft);
     color: var(--text);
     font-weight: 700;
@@ -184,7 +184,7 @@ h2 {
     padding: 24px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(--panel);
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf7 100%);
     box-shadow: var(--shadow);
 }
 
@@ -247,7 +247,7 @@ label {
 
 .scan-row:focus-within {
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(15, 143, 136, 0.16);
+    box-shadow: 0 0 0 4px rgba(253, 123, 65, 0.18);
 }
 
 .scan-row i {
@@ -281,7 +281,7 @@ label {
     align-self: stretch;
     padding: 0 22px;
     border-radius: 0;
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #ffffff;
     transition: background 160ms ease;
 }
@@ -302,7 +302,9 @@ label {
     padding: 18px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(--panel-soft);
+    background:
+        linear-gradient(180deg, rgba(237, 191, 155, 0.2), rgba(255, 255, 255, 0.62)),
+        var(--panel-soft);
 }
 
 .camera-header {
@@ -346,11 +348,11 @@ label {
 .qr-reader {
     overflow: hidden;
     min-height: 180px;
-    border: 1px dashed rgba(32, 37, 43, 0.24);
+    border: 1px dashed rgba(60, 64, 68, 0.28);
     border-radius: 8px;
     background:
-        linear-gradient(90deg, rgba(32, 37, 43, 0.05) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(32, 37, 43, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(60, 64, 68, 0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(60, 64, 68, 0.06) 1px, transparent 1px),
         #ffffff;
     background-size: 22px 22px;
 }
@@ -376,7 +378,7 @@ label {
 }
 
 .soft-button:hover {
-    border-color: rgba(15, 143, 136, 0.34);
+    border-color: rgba(253, 123, 65, 0.42);
     background: var(--primary-soft);
     transform: translateY(-1px);
 }
@@ -410,7 +412,7 @@ label {
 }
 
 .result-panel.loading {
-    border-color: rgba(15, 143, 136, 0.24);
+    border-color: rgba(253, 123, 65, 0.28);
     background: linear-gradient(180deg, var(--primary-soft) 0%, #ffffff 46%);
 }
 
@@ -421,10 +423,10 @@ label {
     place-items: center;
     margin-bottom: 14px;
     border-radius: 8px;
-    background: var(--accent-soft);
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
     color: var(--primary);
     font-size: 32px;
-    box-shadow: 0 14px 28px rgba(32, 37, 43, 0.14);
+    box-shadow: 0 14px 28px rgba(60, 64, 68, 0.14);
 }
 
 .verdict-mark.success {

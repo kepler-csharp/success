@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Success Tickets">
-  <rect width="512" height="512" rx="96" fill="#111827"/>
+  <rect width="512" height="512" rx="96" fill="#3C4044"/>
   <path d="M128 176c0-26.51 21.49-48 48-48h160c26.51 0 48 21.49 48 48v32c-26.51 0-48 21.49-48 48s21.49 48 48 48v32c0 26.51-21.49 48-48 48H176c-26.51 0-48-21.49-48-48v-32c26.51 0 48-21.49 48-48s-21.49-48-48-48v-32Z" fill="#ffffff"/>
-  <path d="M222 272.8 198.6 249.4 176 272l46 46 114-114-22.6-22.6L222 272.8Z" fill="#16a34a"/>
-  <path d="M256 150v48M256 314v48" stroke="#d1d5db" stroke-width="18" stroke-linecap="round" stroke-dasharray="2 34"/>
+  <path d="M222 272.8 198.6 249.4 176 272l46 46 114-114-22.6-22.6L222 272.8Z" fill="#FD7B41"/>
+  <path d="M256 150v48M256 314v48" stroke="#EDBF9B" stroke-width="18" stroke-linecap="round" stroke-dasharray="2 34"/>
 </svg>

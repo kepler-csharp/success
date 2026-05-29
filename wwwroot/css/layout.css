@@ -1,25 +1,25 @@
 :root {
-    --bg: #eef1f4;
+    --bg: #dddcdb;
     --panel: #ffffff;
-    --panel-soft: #f7f9fb;
-    --text: #20252b;
-    --muted: #68717d;
-    --border: rgba(32, 37, 43, 0.13);
-    --primary: #0f8f88;
-    --primary-dark: #0a6f6a;
-    --primary-soft: #e6f7f5;
-    --accent: #f2b84b;
-    --accent-soft: #fff7e3;
+    --panel-soft: #f4ede8;
+    --text: #3c4044;
+    --muted: #6b625c;
+    --border: rgba(60, 64, 68, 0.16);
+    --primary: #fd7b41;
+    --primary-dark: #d95b28;
+    --primary-soft: #fff0e7;
+    --accent: #edbf9b;
+    --accent-soft: #fbebdd;
     --success: #237a54;
     --success-bg: #e8f6ee;
     --danger: #b43d3d;
     --danger-bg: #fff0f0;
     --warning: #9b6423;
     --warning-bg: #fff6e8;
-    --sidebar: #263238;
-    --sidebar-deep: #1f282d;
-    --shadow: 0 18px 42px rgba(32, 37, 43, 0.12);
-    --shadow-soft: 0 8px 22px rgba(32, 37, 43, 0.08);
+    --sidebar: #3c4044;
+    --sidebar-deep: #2b2e31;
+    --shadow: 0 18px 42px rgba(60, 64, 68, 0.14);
+    --shadow-soft: 0 8px 22px rgba(60, 64, 68, 0.1);
 }
 
 * {
@@ -30,7 +30,8 @@ body {
     margin: 0;
     min-height: 100vh;
     background:
-        linear-gradient(180deg, #f7f9fb 0%, var(--bg) 100%);
+        radial-gradient(circle at top left, rgba(237, 191, 155, 0.48), transparent 34%),
+        linear-gradient(180deg, #f8f4f0 0%, var(--bg) 100%);
     color: var(--text);
     font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif;
     line-height: 1.5;
@@ -61,9 +62,9 @@ body {
     height: 46px;
     place-items: center;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--primary), #23b2a9);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: #ffffff;
-    box-shadow: 0 10px 22px rgba(15, 143, 136, 0.28);
+    box-shadow: 0 10px 22px rgba(253, 123, 65, 0.26);
 }
 
 .brand strong,
@@ -96,13 +97,13 @@ body {
 
 .menu-link i {
     width: 20px;
-    color: #8fd8d3;
+    color: var(--accent);
     text-align: center;
 }
 
 .menu-link.active,
 .menu-link:hover {
-    background: rgba(15, 143, 136, 0.18);
+    background: rgba(253, 123, 65, 0.2);
     color: #ffffff;
     transform: translateX(2px);
 }

@@ -46,7 +46,8 @@ public class ApiTicketService : ITicketService
 
     public async Task<TicketValidationResponse> ValidateTicketAsync(string scanCode)
     {
-        var code = (scanCode ?? "").Trim();
+        var rawCode = (scanCode ?? "").Trim();
+        var code = NormalizeScannedCode(rawCode);
         if (string.IsNullOrWhiteSpace(code))
         {
             return Response(false, "Codigo requerido", "Escanea el QR o escribe el codigo del ticket.", "error");
@@ -142,6 +143,118 @@ public class ApiTicketService : ITicketService
     private static string NormalizeCodeProperty(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? "qrCode" : value.Trim();
+    }
+
+    private static string NormalizeScannedCode(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        var text = value.Trim();
+        return TryExtractCodeFromJson(text)
+               ?? TryExtractCodeFromUrl(text)
+               ?? text;
+    }
+
+    private static string? TryExtractCodeFromJson(string text)
+    {
+        if (!text.StartsWith('{') && !text.StartsWith('['))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            return FindCode(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? FindCode(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var code = GetString(element, "qrCode", "ticketCode", "code", "ticketId", "id", "token");
+            if (!string.IsNullOrWhiteSpace(code))
+            {
+                return code;
+            }
+
+            foreach (var property in element.EnumerateObject())
+            {
+                var nestedCode = FindCode(property.Value);
+                if (!string.IsNullOrWhiteSpace(nestedCode))
+                {
+                    return nestedCode;
+                }
+            }
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                var nestedCode = FindCode(item);
+                if (!string.IsNullOrWhiteSpace(nestedCode))
+                {
+                    return nestedCode;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TryExtractCodeFromUrl(string text)
+    {
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var code = GetQueryValue(uri.Query, "qrCode", "ticketCode", "code", "ticketId", "id", "token");
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            return code;
+        }
+
+        var lastSegment = uri.Segments.LastOrDefault()?.Trim('/');
+        return string.IsNullOrWhiteSpace(lastSegment)
+            ? null
+            : Uri.UnescapeDataString(lastSegment);
+    }
+
+    private static string? GetQueryValue(string query, params string[] names)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return null;
+        }
+
+        var pairs = query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var pair in pairs)
+        {
+            var parts = pair.Split('=', 2);
+            var key = Uri.UnescapeDataString(parts[0].Replace("+", " "));
+            if (!names.Any(name => name.Equals(key, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1].Replace("+", " ")) : "";
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 
     private static string Truncate(string? value)
@@ -276,14 +389,22 @@ public class ApiTicketService : ITicketService
         return new TicketValidationResponse.TicketInfo
         {
             Code = FirstText(
-                GetString(ticket, "ticketId", "id", "code", "ticketCode", "qrCode"),
-                scannedCode) ?? scannedCode,
+                GetHumanText(ticket, "ticketId", "id", "code", "ticketCode"),
+                ShortDisplayCode(scannedCode)) ?? "",
             ClientName = FirstText(
-                GetString(ticket, "holderName", "clientName", "customerName", "fullName", "name"),
-                GetNestedString(ticket, "holder", "name", "fullName", "email"),
-                GetNestedString(ticket, "user", "name", "fullName", "email"),
-                GetNestedString(ticket, "customer", "name", "fullName", "email"),
-                GetString(ticket, "holderEmail", "email", "clientEmail", "userEmail")) ?? "",
+                BuildName(ticket),
+                BuildNestedName(ticket, "holder"),
+                BuildNestedName(ticket, "user"),
+                BuildNestedName(ticket, "customer"),
+                BuildNestedName(ticket, "attendee"),
+                BuildNestedName(ticket, "participant"),
+                GetHumanText(ticket, "holderName", "clientName", "customerName", "fullName", "name", "attendeeName", "participantName"),
+                GetNestedHumanText(ticket, "holder", "name", "fullName", "email"),
+                GetNestedHumanText(ticket, "user", "name", "fullName", "email"),
+                GetNestedHumanText(ticket, "customer", "name", "fullName", "email"),
+                GetNestedHumanText(ticket, "attendee", "name", "fullName", "email"),
+                GetNestedHumanText(ticket, "participant", "name", "fullName", "email"),
+                GetHumanText(ticket, "holderEmail", "email", "clientEmail", "userEmail")) ?? "",
             Email = FirstText(
                 GetString(ticket, "holderEmail", "email", "clientEmail", "userEmail"),
                 GetNestedString(ticket, "holder", "email"),
@@ -382,6 +503,65 @@ public class ApiTicketService : ITicketService
         return TryGetProperty(element, parentName, out var parent)
             ? GetString(parent, names)
             : null;
+    }
+
+    private static string? GetHumanText(JsonElement element, params string[] names)
+    {
+        var text = GetString(element, names);
+        return LooksLikeMachinePayload(text) ? null : text;
+    }
+
+    private static string? GetNestedHumanText(JsonElement element, string parentName, params string[] names)
+    {
+        return TryGetProperty(element, parentName, out var parent)
+            ? GetHumanText(parent, names)
+            : null;
+    }
+
+    private static string? BuildName(JsonElement element)
+    {
+        var firstName = GetHumanText(element, "firstName", "first_name", "names", "nombres");
+        var lastName = GetHumanText(element, "lastName", "last_name", "surname", "apellidos");
+        var fullName = string.Join(" ", new[] { firstName, lastName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        return string.IsNullOrWhiteSpace(fullName) ? null : fullName;
+    }
+
+    private static string? BuildNestedName(JsonElement element, string parentName)
+    {
+        return TryGetProperty(element, parentName, out var parent) ? BuildName(parent) : null;
+    }
+
+    private static string ShortDisplayCode(string value)
+    {
+        var code = (value ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return "";
+        }
+
+        if (!LooksLikeMachinePayload(code) && code.Length <= 36)
+        {
+            return code;
+        }
+
+        return code.Length <= 16 ? code : $"{code[..10]}...{code[^6..]}";
+    }
+
+    private static bool LooksLikeMachinePayload(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var text = value.Trim();
+        return text.Length > 80
+               || text.StartsWith('{')
+               || text.StartsWith('[')
+               || text.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+               || text.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+               || text.Count(character => character == '.') == 2 && text.All(character =>
+                   char.IsLetterOrDigit(character) || character is '_' or '-' or '.');
     }
 
     private static bool? GetBool(JsonElement element, params string[] names)

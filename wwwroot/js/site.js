@@ -21,7 +21,7 @@ let isScanLocked = false;
 scanForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const code = scanInput.value.trim();
+    const code = extractScanCode(scanInput.value);
     if (code === "") {
         showResult({
             success: false,
@@ -173,7 +173,7 @@ function resumeCameraScanner() {
 }
 
 async function handleQrScan(decodedText) {
-    const code = String(decodedText || "").trim();
+    const code = extractScanCode(decodedText);
 
     if (isScanLocked || code === "") {
         return;
@@ -200,6 +200,80 @@ async function handleQrScan(decodedText) {
     if (isScannerRunning) {
         scanNextButton.classList.remove("hidden");
         setCameraStatus("Validado. Listo para el siguiente escaneo.", true);
+    }
+}
+
+function extractScanCode(value) {
+    const text = String(value || "").trim();
+    if (text === "") {
+        return "";
+    }
+
+    const jsonCode = extractCodeFromJson(text);
+    if (jsonCode) {
+        return jsonCode;
+    }
+
+    const urlCode = extractCodeFromUrl(text);
+    if (urlCode) {
+        return urlCode;
+    }
+
+    return text;
+}
+
+function extractCodeFromJson(text) {
+    if (!text.startsWith("{") && !text.startsWith("[")) {
+        return "";
+    }
+
+    try {
+        return findCodeInObject(JSON.parse(text));
+    } catch {
+        return "";
+    }
+}
+
+function findCodeInObject(value) {
+    if (!value || typeof value !== "object") {
+        return "";
+    }
+
+    const codeKeys = ["qrCode", "ticketCode", "code", "ticketId", "id", "token"];
+    for (const key of codeKeys) {
+        if (typeof value[key] === "string" || typeof value[key] === "number") {
+            const code = String(value[key]).trim();
+            if (code) {
+                return code;
+            }
+        }
+    }
+
+    for (const nested of Object.values(value)) {
+        const code = findCodeInObject(nested);
+        if (code) {
+            return code;
+        }
+    }
+
+    return "";
+}
+
+function extractCodeFromUrl(text) {
+    try {
+        const url = new URL(text);
+        const params = ["qrCode", "ticketCode", "code", "ticketId", "id", "token"];
+        for (const param of params) {
+            const value = url.searchParams.get(param);
+            if (value) {
+                return value.trim();
+            }
+        }
+
+        const lastPathPart = url.pathname.split("/").filter(Boolean).pop();
+        return lastPathPart ? decodeURIComponent(lastPathPart).trim() : "";
+    } catch {
+        return "";
     }
 }
 
@@ -246,14 +320,14 @@ function showResult(data) {
     const seat = [ticket.row, ticket.seatNumber].filter(Boolean).join("-");
     const typeStatus = [ticket.ticketType || ticket.entryMode, ticket.status].filter(Boolean).join(" / ");
 
-    document.getElementById("clientName").textContent = ticket.clientName || "Sin nombre";
+    document.getElementById("clientName").textContent = cleanDisplayValue(ticket.clientName, "Sin nombre");
     document.getElementById("clientContact").textContent = contact || "Sin contacto";
     document.getElementById("eventName").textContent = ticket.eventName || "--";
     document.getElementById("venueName").textContent = ticket.venueName || "--";
     document.getElementById("showtimeStart").textContent = formatDateTime(ticket.showtimeStart);
     document.getElementById("seatNumber").textContent = seat || "Sin asiento";
     document.getElementById("ticketType").textContent = typeStatus || "--";
-    document.getElementById("ticketCode").textContent = ticket.code || "--";
+    document.getElementById("ticketCode").textContent = formatTicketCode(ticket.code);
     document.getElementById("scanTime").textContent = formatDateTime(ticket.scanTime);
 
     const photo = document.getElementById("clientPhoto");
@@ -266,6 +340,36 @@ function showResult(data) {
     }
 
     ticketDetails.classList.remove("hidden");
+}
+
+function cleanDisplayValue(value, fallback) {
+    const text = String(value || "").trim();
+    if (!text || looksLikePayload(text)) {
+        return fallback;
+    }
+
+    return text;
+}
+
+function formatTicketCode(value) {
+    const code = String(value || "").trim();
+    if (!code) {
+        return "--";
+    }
+
+    if (!looksLikePayload(code) && code.length <= 36) {
+        return code;
+    }
+
+    return `${code.slice(0, 10)}...${code.slice(-6)}`;
+}
+
+function looksLikePayload(value) {
+    return value.length > 80
+        || value.startsWith("{")
+        || value.startsWith("[")
+        || /^https?:\/\//i.test(value)
+        || /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
 function markApiStatus(isOnline) {
